@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>汉堡王性价比计算器 - 测试页面</title>
+    <script src="https://cdn.jsdelivr.net/npm/vue@3.3.0/dist/vue.global.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/pinia/dist/pinia.global.js"></script>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f8f8f8;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        .title {
+            font-size: 24px;
+            font-weight: bold;
+            color: #333;
+        }
+        .subtitle {
+            font-size: 16px;
+            color: #666;
+            margin-top: 5px;
+        }
+        .test-section {
+            margin-bottom: 20px;
+        }
+        .section-title {
+            font-size: 18px;
+            font-weight: bold;
+            margin-bottom: 10px;
+            color: #333;
+        }
+        .result {
+            background: #f5f5f5;
+            padding: 15px;
+            border-radius: 5px;
+            margin-top: 10px;
+        }
+        .result-item {
+            margin-bottom: 10px;
+            padding: 10px;
+            background: white;
+            border-radius: 5px;
+            border-left: 4px solid #3cc51f;
+        }
+        .food-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-top: 10px;
+        }
+        .food-item {
+            background: #e6f7e6;
+            padding: 8px 15px;
+            border-radius: 20px;
+            font-size: 14px;
+            color: #333;
+        }
+        .button {
+            background: #3cc51f;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            margin-top: 10px;
+        }
+        .button:hover {
+            background: #2da817;
+        }
+    </style>
+</head>
+<body>
+    <div id="app" class="container">
+        <div class="header">
+            <div class="title">汉堡王性价比计算器 - 测试页面</div>
+            <div class="subtitle">验证套餐推荐算法</div>
+        </div>
+
+        <div class="test-section">
+            <div class="section-title">测试数据</div>
+            <div class="food-list">
+                <div class="food-item">🍔 皇堡 (bk_whopper)</div>
+                <div class="food-item">🍟 薯条 (bk_fries)</div>
+                <div class="food-item">🥤 可乐 (bk_coke)</div>
+            </div>
+            <button class="button" @click="testRecommendations">测试推荐算法</button>
+        </div>
+
+        <div class="test-section" v-if="recommendations.length > 0">
+            <div class="section-title">推荐结果</div>
+            <div class="result">
+                <div v-for="(item, index) in recommendations" :key="index" class="result-item">
+                    <div class="result-title">{{ item.combo.name }}</div>
+                    <div>平台: {{ item.combo.platform }}</div>
+                    <div>价格: ¥{{ item.combo.price }}</div>
+                    <div>性价比: {{ item.costEfficiency.toFixed(2) }}x</div>
+                    <div>匹配度: {{ (item.matchRatio * 100).toFixed(0) }}%</div>
+                    <div>类型: {{ item.type === 'exact' ? '精确匹配' : '部分匹配' }}</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 模拟数据存储
+        const useDataStore = () => {
+            return {
+                foods: [
+                    { id: 'bk_whopper', name: '皇堡', category: 'burger', soloPrice: 15.0, comboIds: ['combo_001', 'combo_002'] },
+                    { id: 'bk_fries', name: '薯条', category: 'side', soloPrice: 8.0, comboIds: ['combo_001', 'combo_003'] },
+                    { id: 'bk_coke', name: '可乐', category: 'drink', soloPrice: 6.0, comboIds: ['combo_001', 'combo_004'] }
+                ],
+                combos: [
+                    { id: 'combo_001', name: '皇堡超值套餐', platform: 'meituan', price: 28.0, foodIds: ['bk_whopper', 'bk_fries', 'bk_coke'] },
+                    { id: 'combo_002', name: '皇堡单人套餐', platform: 'meituan', price: 20.0, foodIds: ['bk_whopper', 'bk_fries'] },
+                    { id: 'combo_003', name: '薯条可乐套餐', platform: 'meituan', price: 15.0, foodIds: ['bk_fries', 'bk_coke'] }
+                ],
+                comboFoods: [
+                    { comboId: 'combo_001', foodId: 'bk_whopper', quantity: 1 },
+                    { comboId: 'combo_001', foodId: 'bk_fries', quantity: 1 },
+                    { comboId: 'combo_001', foodId: 'bk_coke', quantity: 1 },
+                    { comboId: 'combo_002', foodId: 'bk_whopper', quantity: 1 },
+                    { comboId: 'combo_002', foodId: 'bk_fries', quantity: 1 },
+                    { comboId: 'combo_003', foodId: 'bk_fries', quantity: 1 },
+                    { comboId: 'combo_003', foodId: 'bk_coke', quantity: 1 }
+                ]
+            }
+        }
+
+        // 套餐推荐算法
+        const recommendCombos = (selectedFoodIds, dataStore) => {
+            // 1. 获取每个食物的套餐集合
+            const foodComboSets = selectedFoodIds.map(foodId => {
+                const food = dataStore.foods.find(f => f.id === foodId)
+                return new Set(food?.comboIds || [])
+            })
+
+            // 2. 计算交集（精确匹配）
+            const exactMatches = Array.from(foodComboSets[0] || [])
+                .filter(comboId => foodComboSets.every(set => set.has(comboId)))
+
+            // 3. 计算子集匹配（高性价比推荐）
+            const partialMatches = new Set()
+            foodComboSets.forEach(set => {
+                set.forEach(comboId => {
+                    if (!exactMatches.includes(comboId)) {
+                        partialMatches.add(comboId)
+                    }
+                })
+            })
+
+            // 4. 获取所有套餐数据
+            const allCombos = dataStore.combos
+            const allComboFoods = dataStore.comboFoods
+
+            // 5. 计算每个套餐的性价比
+            const recommendations = [
+                ...exactMatches.map(comboId => ({
+                    combo: allCombos.find(c => c.id === comboId),
+                    type: 'exact',
+                    matchedFoodIds: selectedFoodIds
+                })),
+                ...Array.from(partialMatches).map(comboId => ({
+                    combo: allCombos.find(c => c.id === comboId),
+                    type: 'partial',
+                    matchedFoodIds: calculateMatchedFoods(comboId, selectedFoodIds, allComboFoods)
+                }))
+            ]
+
+            // 6. 计算性价比得分并排序
+            return recommendations
+                .map(rec => ({
+                    ...rec,
+                    costEfficiency: calculateCostEfficiency(rec, allCombos, allComboFoods, selectedFoodIds, dataStore)
+                }))
+                .sort((a, b) => sortRecommendations(a, b))
+        }
+
+        // 计算性价比
+        const calculateCostEfficiency = (recommendation, allCombos, allComboFoods, selectedFoodIds, dataStore) => {
+            const { combo, type, matchedFoodIds } = recommendation
+            const matchedFoods = selectedFoodIds
+                .filter(id => matchedFoodIds.includes(id))
+                .map(id => dataStore.foods.find(f => f.id === id))
+
+            const soloPrice = matchedFoods.reduce((sum, f) => sum + (f.soloPrice || 0), 0)
+
+            if (type === 'exact') {
+                return soloPrice / combo.price
+            }
+
+            // 部分匹配：考虑匹配度权重
+            const matchRatio = matchedFoodIds.length / getComboFoodCount(combo.id, allComboFoods)
+            return (soloPrice / combo.price) * matchRatio
+        }
+
+        // 获取套餐食物数量
+        const getComboFoodCount = (comboId, allComboFoods) => {
+            return allComboFoods.filter(cf => cf.comboId === comboId).length
+        }
+
+        // 计算匹配的食物ID
+        const calculateMatchedFoods = (comboId, selectedFoodIds, allComboFoods) => {
+            const comboFoods = allComboFoods.filter(cf => cf.comboId === comboId)
+            const comboFoodIds = comboFoods.map(cf => cf.foodId)
+            return selectedFoodIds.filter(id => comboFoodIds.includes(id))
+        }
+
+        // 排序推荐
+        const sortRecommendations = (a, b) => {
+            // 1. 精确匹配优先
+            if (a.type !== b.type) return a.type === 'exact' ? -1 : 1
+
+            // 2. 性价比降序
+            if (a.costEfficiency !== b.costEfficiency) {
+                return b.costEfficiency - a.costEfficiency
+            }
+
+            // 3. 价格升序
+            if (a.combo.price !== b.combo.price) {
+                return a.combo.price - b.combo.price
+            }
+
+            return 0
+        }
+
+        // Vue应用
+        const { createApp } = Vue
+        const { createPinia } = Pinia
+
+        const app = createApp({
+            data() {
+                return {
+                    recommendations: []
+                }
+            },
+            methods: {
+                testRecommendations() {
+                    const dataStore = useDataStore()
+                    const selectedFoodIds = ['bk_whopper', 'bk_fries', 'bk_coke']
+                    this.recommendations = recommendCombos(selectedFoodIds, dataStore)
+                }
+            }
+        })
+
+        app.use(createPinia())
+        app.mount('#app')
+    </script>
+</body>
+</html>

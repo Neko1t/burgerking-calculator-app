@@ -1,0 +1,63 @@
+name: Release Data Update
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'data/**'
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+
+      - name: Update version
+        run: |
+          # 递增版本号
+          npm version patch --no-git-tag-version
+          VERSION=$(node -p "require('./package.json').version")
+          echo "VERSION=$VERSION" >> $GITHUB_ENV
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: v${{ env.VERSION }}
+          name: Data Update v${{ env.VERSION }}
+          body: |
+            ## 更新内容
+            - 更新套餐数据
+            - 版本: ${{ env.VERSION }}
+            - 更新时间: ${{ github.event.head_commit.timestamp }}
+          files: |
+            data/*.json
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Update metadata
+        run: |
+          # 更新metadata.json中的版本号
+          python -c "
+import json
+with open('data/metadata.json', 'r') as f:
+    data = json.load(f)
+data['version'] = '${{ env.VERSION }}'
+data['lastUpdate'] = '${{ github.event.head_commit.timestamp }}'
+with open('data/metadata.json', 'w') as f:
+    json.dump(data, f, indent=2)
+          "
+          git add data/metadata.json
+          git commit -m 'Update metadata version to ${{ env.VERSION }}'
+          git push
+
+      - name: Deploy to CDN
+        run: |
+          echo "CDN deployment would be triggered here"
+          # 实际部署到CDN的逻辑可以在这里添加
+          # 例如：调用CDN API，更新缓存等
+          echo "Data deployed to CDN"

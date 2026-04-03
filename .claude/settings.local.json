@@ -1,0 +1,22 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm install:*)",
+      "Bash(pnpm install:*)",
+      "Bash(pnpm add:*)",
+      "Bash(\"E:\\\\HBuilder\\\\HBuilderX\\\\cli.exe\" run:*)",
+      "Bash(node test_algorithm.js)",
+      "Bash(pnpm dev:h5)",
+      "Bash(curl -s http://localhost:5173)",
+      "Bash(curl -s http://localhost:5174)",
+      "Bash(gh auth:*)",
+      "Bash(git --version)",
+      "Bash(gh repo:*)",
+      "Bash(curl:*)",
+      "WebFetch(domain:cdn.jsdelivr.net)",
+      "Bash(gh api:*)",
+      "Bash(mkdir -p data)",
+      "Bash(mv *.json data/)"
+    ]
+  }
+}

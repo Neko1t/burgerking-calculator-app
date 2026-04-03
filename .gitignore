@@ -1,0 +1,39 @@
+# uni-app build output
+uni-app/dist
+uni-app/unpackage
+
+# node_modules
+uni-app/node_modules
+**/node_modules
+
+# IDE
+.idea/
+.vscode/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# OS
+.DS_Store
+Thumbs.db
+
+# logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
+
+# local env files
+*.local
+.env
+.env.local
+.env.*.local
+
+# test
+coverage/
+
+# Uni-app
+*.log
+unpackage/
+data/
