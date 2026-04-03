@@ -2,8 +2,8 @@
 
 <div align="center">
 
-![License](https://img.shields.io/github/license/your-username/burgerking-calculator)
-![Stars](https://img.shields.io/github/stars/your-username/burgerking-calculator)
+![License](https://img.shields.io/github/license/Neko1t/burgerking-calculator-app)
+![Stars](https://img.shields.io/github/stars/Neko1t/burgerking-calculator-app)
 ![Platform](https://img.shields.io/badge/platform-WeChat%20Mini%20Program%20%7C%20iOS%20%7C%20Android%20%7C%20H5-brightgreen)
 
 **开源工具，帮你找到最划算的汉堡王套餐**
