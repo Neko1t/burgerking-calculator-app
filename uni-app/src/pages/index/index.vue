@@ -53,6 +53,10 @@
 							</view>
 						</view>
 						<view class="float-bar-right">
+							<view class="cart-btn" @click="showCartModal">
+								<uni-icons type="cart" size="20" color="#ff6b35"></uni-icons>
+								<text class="cart-btn-text">购物车</text>
+							</view>
 							<view class="clear-btn" @click="clearSelection">
 								<text>清空</text>
 							</view>
@@ -64,6 +68,47 @@
 					</view>
 				</view>
 			</view>
+
+			<!-- 购物车弹窗 -->
+			<view class="cart-modal-overlay" v-if="showCart" @click="closeCartModal">
+				<view class="cart-modal" @click.stop>
+					<view class="cart-header">
+						<text class="cart-title">已选菜品</text>
+						<view class="cart-close" @click="closeCartModal">
+							<uni-icons type="close" size="20" color="#999"></uni-icons>
+						</view>
+					</view>
+
+					<view class="cart-empty" v-if="cartItems.length === 0">
+						<text class="cart-empty-text">购物车是空的</text>
+					</view>
+
+					<scroll-view class="cart-list" scroll-y v-else>
+						<view v-for="item in cartItems" :key="item.food.id" class="cart-item">
+							<view class="cart-item-info">
+								<text class="cart-item-name">{{ item.food.name }}</text>
+								<text class="cart-item-price">¥{{ item.food.soloPrice }} × {{ item.count }}</text>
+							</view>
+							<view class="cart-item-actions">
+								<view class="cart-item-subtotal">¥{{ (item.food.soloPrice * item.count).toFixed(2) }}</view>
+								<view class="cart-item-delete" @click="removeFromCart(item.food.id)">
+									<uni-icons type="minus" size="14" color="#ff6b35"></uni-icons>
+								</view>
+							</view>
+						</view>
+					</scroll-view>
+
+					<view class="cart-footer" v-if="cartItems.length > 0">
+						<view class="cart-total">
+							<text class="cart-total-label">合计</text>
+							<text class="cart-total-value">¥{{ cartTotalPrice }}</text>
+						</view>
+						<view class="cart-clear-btn" @click="clearSelection">
+							<text>清空</text>
+						</view>
+					</view>
+				</view>
+			</view>
 		</view>
 	</page>
 </template>
@@ -71,7 +116,8 @@
 <script setup>
 	import {
 		ref,
-		computed
+		computed,
+		onMounted
 	} from 'vue'
 	import {
 		useDataStore
@@ -80,30 +126,74 @@
 
 	const dataStore = useDataStore()
 
+	// 初始化数据
+	onMounted(async () => {
+		await dataStore.init()
+	})
+
 	// 分类数据
 	const categories = ref([{
-			id: 'burger',
+			id: '主食',
 			name: '汉堡'
 		},
 		{
-			id: 'side',
+			id: '小食',
 			name: '小食'
 		},
 		{
-			id: 'drink',
+			id: '饮料',
 			name: '饮料'
 		},
 		{
-			id: 'dessert',
+			id: '甜品',
 			name: '甜点'
 		}
 	])
 
 	// 选中的分类
-	const selectedCategory = ref('burger')
+	const selectedCategory = ref('主食')
 
 	// 选中的食物列表
 	const selectedFoods = ref([])
+
+	// 购物车弹窗
+	const showCart = ref(false)
+
+	// 购物车商品（带数量统计）
+	const cartItems = computed(() => {
+		const countMap = {}
+		selectedFoods.value.forEach(food => {
+			if (countMap[food.id]) {
+				countMap[food.id].count++
+			} else {
+				countMap[food.id] = { food, count: 1 }
+			}
+		})
+		return Object.values(countMap)
+	})
+
+	// 购物车总价
+	const cartTotalPrice = computed(() => {
+		return cartItems.value.reduce((sum, item) => sum + (item.food.soloPrice * item.count), 0).toFixed(2)
+	})
+
+	// 显示购物车
+	const showCartModal = () => {
+		showCart.value = true
+	}
+
+	// 关闭购物车
+	const closeCartModal = () => {
+		showCart.value = false
+	}
+
+	// 从购物车移除一个
+	const removeFromCart = (foodId) => {
+		const index = selectedFoods.value.findIndex(f => f.id === foodId)
+		if (index !== -1) {
+			selectedFoods.value.splice(index, 1)
+		}
+	}
 
 	// 过滤食物列表
 	const filteredFoods = computed(() => {
@@ -311,7 +401,7 @@
 		padding-bottom: calc(16rpx + env(safe-area-inset-bottom));
 		background-color: transparent;
 		z-index: 999;
-		margin-bottom: 60rpx;
+		margin-bottom: 100rpx;
 	}
 
 	.bottom-float-bar-inner {
@@ -387,5 +477,170 @@
 		font-size: 28rpx;
 		color: #fff;
 		font-weight: 500;
+	}
+
+	.cart-btn {
+		display: flex;
+		align-items: center;
+		gap: 6rpx;
+		padding: 0 24rpx;
+		height: 72rpx;
+		background-color: #fff5f0;
+		border-radius: 36rpx;
+	}
+
+	.cart-btn-text {
+		font-size: 26rpx;
+		color: #ff6b35;
+	}
+
+	/* 购物车弹窗 */
+	.cart-modal-overlay {
+		position: fixed;
+		top: 0;
+		left: 0;
+		right: 0;
+		bottom: 0;
+		background-color: rgba(0, 0, 0, 0.5);
+		display: flex;
+		align-items: flex-end;
+		justify-content: center;
+		z-index: 1000;
+	}
+
+	.cart-modal {
+		width: 100%;
+		max-height: 70vh;
+		background-color: #fff;
+		border-radius: 32rpx 32rpx 0 0;
+		overflow: hidden;
+		display: flex;
+		flex-direction: column;
+	}
+
+	.cart-header {
+		display: flex;
+		justify-content: space-between;
+		align-items: center;
+		padding: 30rpx;
+		border-bottom: 1rpx solid #f0f0f0;
+		flex-shrink: 0;
+	}
+
+	.cart-title {
+		font-size: 32rpx;
+		font-weight: bold;
+		color: #333;
+	}
+
+	.cart-close {
+		width: 56rpx;
+		height: 56rpx;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		background-color: #f5f5f5;
+		border-radius: 50%;
+	}
+
+	.cart-empty {
+		padding: 80rpx 0;
+		display: flex;
+		justify-content: center;
+	}
+
+	.cart-empty-text {
+		font-size: 28rpx;
+		color: #999;
+	}
+
+	.cart-list {
+		flex: 1;
+		min-height: 0;
+		padding: 0 30rpx;
+	}
+
+	.cart-item {
+		display: flex;
+		justify-content: space-between;
+		align-items: center;
+		padding: 24rpx 0;
+		border-bottom: 1rpx solid #f5f5f5;
+	}
+
+	.cart-item-info {
+		flex: 1;
+	}
+
+	.cart-item-name {
+		font-size: 28rpx;
+		color: #333;
+		display: block;
+		margin-bottom: 6rpx;
+	}
+
+	.cart-item-price {
+		font-size: 24rpx;
+		color: #999;
+	}
+
+	.cart-item-actions {
+		display: flex;
+		align-items: center;
+		gap: 20rpx;
+	}
+
+	.cart-item-subtotal {
+		font-size: 28rpx;
+		color: #ff6b35;
+		font-weight: bold;
+	}
+
+	.cart-item-delete {
+		width: 44rpx;
+		height: 44rpx;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		background-color: #fff5f0;
+		border-radius: 50%;
+	}
+
+	.cart-footer {
+		display: flex;
+		justify-content: space-between;
+		align-items: center;
+		padding: 24rpx 30rpx;
+		padding-bottom: calc(24rpx + env(safe-area-inset-bottom));
+		border-top: 1rpx solid #f0f0f0;
+		flex-shrink: 0;
+	}
+
+	.cart-total {
+		display: flex;
+		align-items: baseline;
+		gap: 12rpx;
+	}
+
+	.cart-total-label {
+		font-size: 26rpx;
+		color: #666;
+	}
+
+	.cart-total-value {
+		font-size: 36rpx;
+		color: #ff6b35;
+		font-weight: bold;
+	}
+
+	.cart-clear-btn {
+		padding: 14rpx 28rpx;
+		background-color: #f5f5f5;
+		border-radius: 24rpx;
+	}
+
+	.cart-clear-btn text {
+		font-size: 26rpx;
+		color: #666;
 	}
 </style>

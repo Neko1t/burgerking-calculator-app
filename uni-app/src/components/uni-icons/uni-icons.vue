@@ -19,6 +19,9 @@
 		<text v-else-if="type === 'info'">ℹ</text>
 		<text v-else-if="type === 'close'">✕</text>
 		<text v-else-if="type === 'checkmark'">✓</text>
+		<text v-else-if="type === 'cart'">🛒</text>
+		<text v-else-if="type === 'calendar'">📅</text>
+		<text v-else-if="type === 'minus'">−</text>
 		<text v-else>{{ type }}</text>
 	</view>
 </template>

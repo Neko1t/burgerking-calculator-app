@@ -1,9 +1,7 @@
 /**
  * 套餐推荐算法服务
  */
-import {
-	useDataStore
-} from './data' // 修复：补充导入 store
+import { useDataStore } from '../store/data'
 
 // --- 辅助工具函数：统计数组中元素的频次 ---
 function getFrequencyMap(arr) {
@@ -25,8 +23,11 @@ export function recommendCombos(selectedFoodIds) {
 
 	// 1. 获取每个选中食物的关联套餐集合
 	const foodComboSets = selectedFoodIds.map(foodId => {
-		const food = dataStore.getFoodById(foodId)
-		return new Set(food?.comboIds || [])
+		// 从 comboFoods 中查找包含该食物的套餐ID
+		const comboIds = dataStore.comboFoods
+			.filter(cf => cf.foodId === foodId)
+			.map(cf => cf.comboId)
+		return new Set(comboIds)
 	})
 
 	// 2. 收集所有相关的套餐ID
