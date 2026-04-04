@@ -1,0 +1,60 @@
+{
+  "combos": [
+    {
+      "id": "combo_001",
+      "name": "皇堡套餐",
+      "platform": "meituan",
+      "price": 39.9,
+      "description": "皇堡+中薯条+中可乐"
+    },
+    {
+      "id": "combo_002",
+      "name": "小食套餐",
+      "platform": "meituan",
+      "price": 25.0,
+      "description": "鸡块5块+中薯条+中可乐"
+    },
+    {
+      "id": "combo_003",
+      "name": "单人豪华套餐",
+      "platform": "meituan",
+      "price": 49.9,
+      "description": "皇堡+大薯条+大可乐+鸡块3块"
+    },
+    {
+      "id": "combo_004",
+      "name": "安格斯套餐",
+      "platform": "eleme",
+      "price": 52.0,
+      "description": "安格斯牛肉堡+中薯条+中可乐"
+    },
+    {
+      "id": "combo_005",
+      "name": "下午茶套餐",
+      "platform": "meituan",
+      "price": 18.0,
+      "description": "鸡块3块+可口可乐中"
+    },
+    {
+      "id": "combo_006",
+      "name": "香辣鸡腿堡套餐",
+      "platform": "eleme",
+      "price": 29.9,
+      "description": "香辣鸡腿堡+中薯条+中可乐"
+    },
+    {
+      "id": "combo_007",
+      "name": "甜品套餐",
+      "platform": "custom",
+      "price": 15.0,
+      "description": "冰淇淋+鲜蔬沙拉"
+    },
+    {
+      "id": "combo_008",
+      "name": "华夫套餐",
+      "platform": "meituan",
+      "price": 22.0,
+      "description": "华夫饼+中薯条"
+    }
+  ]
+}

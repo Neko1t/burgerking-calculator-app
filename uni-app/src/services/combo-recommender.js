@@ -1,6 +1,13 @@
 /**
  * 套餐推荐算法服务
+ *
+ * 使用 foodName 作为菜品唯一标识
+ * 匹配策略：
+ * 1. 精确匹配 (exact) - 单套餐完全覆盖用户选择
+ * 2. 多套餐匹配 (multi_combo) - 多套餐组合完全覆盖
+ * 3. 置换匹配 (substitution) - 按类别优先级替换实现降级覆盖
  */
+
 import { useDataStore } from '../store/data'
 
 // --- 辅助工具函数：统计数组中元素的频次 ---
@@ -11,190 +18,404 @@ function getFrequencyMap(arr) {
 	}, {})
 }
 
+// --- 类别优先级 (数值越小优先级越高) ---
+const CATEGORY_PRIORITY = {
+	'主食': 1,    // 汉堡
+	'小食': 2,    // 薯条、小食
+	'甜品': 3,    // 甜点
+	'饮料': 4     // 饮料
+}
+
+// --- 浪费惩罚权重 ---
+const WASTE_PENALTY_WEIGHT = 0.3
+
 /**
- * 推荐套餐
- * @param {string[]} selectedFoodIds - 用户选择的菜品ID列表 (可能包含重复ID)
+ * 推荐套餐入口
+ * @param {string[]} selectedFoodNames - 用户选择的菜品名称列表 (可能包含重复)
  * @returns {Array} 推荐结果列表
  */
-export function recommendCombos(selectedFoodIds) {
-	if (!selectedFoodIds || selectedFoodIds.length === 0) return []
+export function recommendCombos(selectedFoodNames) {
+	if (!selectedFoodNames || selectedFoodNames.length === 0) return []
 
 	const dataStore = useDataStore()
+	const allCombos = dataStore.allCombos
+	const allComboFoods = dataStore.allComboFoods
+	const allFoods = dataStore.allFoods
 
-	// 1. 获取每个选中食物的关联套餐集合
-	const foodComboSets = selectedFoodIds.map(foodId => {
-		// 从 comboFoods 中查找包含该食物的套餐ID
-		const comboIds = dataStore.comboFoods
-			.filter(cf => cf.foodId === foodId)
-			.map(cf => cf.comboId)
-		return new Set(comboIds)
-	})
+	// 构建倒排索引：foodName -> Set<comboId>
+	const foodComboIndex = buildFoodComboIndex(allComboFoods)
+	// 构建正排索引：comboId -> foodName[]
+	const comboFoodIndex = buildComboFoodIndex(allComboFoods)
 
-	// 2. 收集所有相关的套餐ID
-	const allRelatedComboIds = new Set()
-	foodComboSets.forEach(set => {
-		set.forEach(comboId => allRelatedComboIds.add(comboId))
-	})
+	// 用户需求频次表
+	const userRequirementMap = getFrequencyMap(selectedFoodNames)
+	const selectedUniqueFoods = [...new Set(selectedFoodNames)]
 
-	// 3. 区分精确匹配和部分匹配
-	const exactMatches = []
-	const partialMatches = []
+	console.log('[算法] 用户选择:', selectedFoodNames)
+	console.log('[算法] 需求频次:', userRequirementMap)
 
-	// 将用户的需求转为频次表 (例如：{ 'burger1': 2, 'cola': 1 })
-	const userRequirementMap = getFrequencyMap(selectedFoodIds)
+	// 1. 精确匹配
+	const exactMatches = findExactMatches(
+		selectedFoodNames,
+		userRequirementMap,
+		allCombos,
+		comboFoodIndex
+	)
 
-	allRelatedComboIds.forEach(comboId => {
-		// 获取该套餐实际包含的食物清单
-		const comboFoodsList = dataStore.comboFoods
-			.filter(cf => cf.comboId === comboId)
-			.map(cf => cf.foodId)
+	console.log('[算法] 精确匹配结果:', exactMatches.length)
 
-		const comboProvideMap = getFrequencyMap(comboFoodsList)
+	if (exactMatches.length > 0) {
+		return rankRecommendations(exactMatches, dataStore)
+	}
 
-		// 检查是否覆盖了用户的全部需求（种类和数量都要满足）
+	// 2. 多套餐匹配
+	const multiComboMatches = findMultiComboMatches(
+		selectedFoodNames,
+		userRequirementMap,
+		allCombos,
+		comboFoodIndex
+	)
+
+	console.log('[算法] 多套餐匹配结果:', multiComboMatches.length)
+
+	if (multiComboMatches.length > 0) {
+		return rankRecommendations(multiComboMatches, dataStore)
+	}
+
+	// 3. 置换匹配
+	const substitutionMatches = findSubstitutionMatches(
+		selectedUniqueFoods,
+		userRequirementMap,
+		allCombos,
+		comboFoodIndex,
+		allFoods
+	)
+
+	console.log('[算法] 置换匹配结果:', substitutionMatches.length)
+
+	return rankRecommendations(substitutionMatches, dataStore)
+}
+
+/**
+ * 构建菜品→套餐倒排索引
+ * foodName → Set<comboId>
+ */
+function buildFoodComboIndex(comboFoods) {
+	const index = new Map()
+	for (const cf of comboFoods) {
+		const foodName = cf.foodId || cf.foodName
+		if (!index.has(foodName)) {
+			index.set(foodName, new Set())
+		}
+		index.get(foodName).add(cf.comboId)
+	}
+	return index
+}
+
+/**
+ * 构建套餐→菜品正排索引
+ * comboId → foodName[]
+ */
+function buildComboFoodIndex(comboFoods) {
+	const index = new Map()
+	for (const cf of comboFoods) {
+		if (!index.has(cf.comboId)) {
+			index.set(cf.comboId, [])
+		}
+		index.get(cf.comboId).push(cf.foodId || cf.foodName)
+	}
+	return index
+}
+
+/**
+ * 精确匹配：单套餐完全覆盖用户选择（不多不少）
+ */
+function findExactMatches(selectedFoodNames, userRequirementMap, allCombos, comboFoodIndex) {
+	const matches = []
+
+	for (const combo of allCombos) {
+		const comboFoodNames = comboFoodIndex.get(combo.id) || []
+		const comboProvideMap = getFrequencyMap(comboFoodNames)
+
 		let isExact = true
-		for (const [foodId, requiredCount] of Object.entries(userRequirementMap)) {
-			const providedCount = comboProvideMap[foodId] || 0
+		for (const [foodName, requiredCount] of Object.entries(userRequirementMap)) {
+			const providedCount = comboProvideMap[foodName] || 0
 			if (providedCount < requiredCount) {
 				isExact = false
 				break
 			}
 		}
 
-		if (isExact) {
-			exactMatches.push(comboId)
-		} else {
-			partialMatches.push(comboId)
+		// 精确匹配：完全覆盖且数量相等
+		if (isExact && selectedFoodNames.length === comboFoodNames.length) {
+			matches.push({
+				combo,
+				type: 'exact',
+				matchedFoodIds: [...selectedFoodNames] // 使用foodName作为ID
+			})
 		}
-	})
+	}
 
-	// 4. 组装推荐数据
-	const allCombos = dataStore.combos
-	const allComboFoods = dataStore.comboFoods
-
-	const recommendations = [
-		...exactMatches.map(comboId => ({
-			combo: allCombos.find(c => c.id === comboId),
-			type: 'exact',
-			// 精确匹配：匹配到的食物就是用户选的食物
-			matchedFoodIds: selectedFoodIds
-		})),
-		...partialMatches.map(comboId => ({
-			combo: allCombos.find(c => c.id === comboId),
-			type: 'partial',
-			matchedFoodIds: calculateMatchedFoods(comboId, selectedFoodIds, allComboFoods)
-		}))
-	]
-
-	// 5. 计算性价比得分并排序
-	return recommendations
-		.map(rec => ({
-			...rec,
-			costEfficiency: calculateCostEfficiency(rec, allCombos, allComboFoods, selectedFoodIds, dataStore)
-		}))
-		.sort(sortRecommendations)
+	return matches
 }
 
 /**
- * 计算性价比 (修复：处理了相同商品多份的计算 Bug)
+ * 多套餐匹配：多个套餐组合覆盖用户选择
  */
-function calculateCostEfficiency(recommendation, allCombos, allComboFoods, selectedFoodIds, dataStore) {
-	const {
-		combo,
-		type,
-		matchedFoodIds
-	} = recommendation
+function findMultiComboMatches(selectedFoodNames, userRequirementMap, allCombos, comboFoodIndex) {
+	const matches = []
 
-	// 计算匹配到的食物在单点时的总原价
-	const soloPrice = matchedFoodIds.reduce((sum, foodId) => {
-		const food = dataStore.getFoodById(foodId)
+	// 获取相关套餐
+	const relevantCombos = allCombos.filter(combo => {
+		const comboFoods = comboFoodIndex.get(combo.id) || []
+		return comboFoods.some(foodName => new Set(selectedFoodNames).has(foodName))
+	})
+
+	// 按匹配度排序
+	const sortedCombos = relevantCombos
+		.map(combo => {
+			const comboFoods = comboFoodIndex.get(combo.id) || []
+			const comboProvideMap = getFrequencyMap(comboFoods)
+			let matchedCount = 0
+			for (const [foodName, required] of Object.entries(userRequirementMap)) {
+				matchedCount += Math.min(comboProvideMap[foodName] || 0, required)
+			}
+			return { combo, matchedCount, matchRatio: matchedCount / selectedFoodNames.length }
+		})
+		.sort((a, b) => b.matchRatio - a.matchRatio)
+
+	// 尝试两两组合
+	for (let i = 0; i < Math.min(sortedCombos.length, 15); i++) {
+		for (let j = i + 1; j < Math.min(sortedCombos.length, 15); j++) {
+			const comboA = sortedCombos[i].combo
+			const comboB = sortedCombos[j].combo
+
+			const foodsA = comboFoodIndex.get(comboA.id) || []
+			const foodsB = comboFoodIndex.get(comboB.id) || []
+			const combinedFoods = [...foodsA, ...foodsB]
+			const combinedProvideMap = getFrequencyMap(combinedFoods)
+
+			let isFullCoverage = true
+			const matchedFoodNames = []
+
+			for (const [foodName, required] of Object.entries(userRequirementMap)) {
+				const provided = combinedProvideMap[foodName] || 0
+				if (provided >= required) {
+					for (let k = 0; k < required; k++) {
+						matchedFoodNames.push(foodName)
+					}
+				} else {
+					isFullCoverage = false
+					break
+				}
+			}
+
+			if (isFullCoverage) {
+				const totalPrice = comboA.price + comboB.price
+
+				if (totalPrice > 0) {
+					matches.push({
+						combo: {
+							...comboA,
+							id: `multi_${comboA.id}_${comboB.id}`,
+							name: `${comboA.name} + ${comboB.name}`,
+							price: totalPrice,
+							isMultiCombo: true,
+							componentCombos: [comboA, comboB]
+						},
+						type: 'multi_combo',
+						matchedFoodIds: matchedFoodNames,
+						combinedEfficiency: calculateComboEfficiency(matchedFoodNames, totalPrice)
+					})
+				}
+			}
+		}
+	}
+
+	return matches.sort((a, b) => b.combinedEfficiency - a.combinedEfficiency).slice(0, 3)
+}
+
+/**
+ * 置换匹配：按类别优先级降级替换
+ */
+function findSubstitutionMatches(selectedUniqueFoods, userRequirementMap, allCombos, comboFoodIndex, allFoods) {
+	const matches = []
+
+	for (const combo of allCombos) {
+		const comboFoodNames = comboFoodIndex.get(combo.id) || []
+		const comboProvideMap = getFrequencyMap(comboFoodNames)
+
+		const matchedFoodNames = []
+		const unmatchedFoodNames = []
+
+		for (const [foodName, required] of Object.entries(userRequirementMap)) {
+			if ((comboProvideMap[foodName] || 0) >= required) {
+				for (let i = 0; i < required; i++) matchedFoodNames.push(foodName)
+			} else {
+				unmatchedFoodNames.push(foodName)
+			}
+		}
+
+		if (unmatchedFoodNames.length === 0) continue
+
+		// 按优先级排序（低优先级的先替换）
+		const sortedUnmatched = unmatchedFoodNames
+			.map(foodName => {
+				const food = allFoods.find(f => f.id === foodName)
+				return {
+					foodName,
+					priority: CATEGORY_PRIORITY[food?.category] || 99
+				}
+			})
+			.sort((a, b) => b.priority - a.priority)
+
+		// 尝试置换
+		for (const { foodName: unmatchedFoodName } of sortedUnmatched) {
+			const unmatchedFood = allFoods.find(f => f.id === unmatchedFoodName)
+			if (!unmatchedFood) continue
+
+			// 在套餐中找同类但不在用户选择中的菜品
+			const substitutable = comboFoodNames.find(comboFoodName => {
+				if (userRequirementMap[comboFoodName]) return false
+				const comboFood = allFoods.find(f => f.id === comboFoodName)
+				return comboFood?.category === unmatchedFood.category
+			})
+
+			if (substitutable) {
+				const newMatchedFoodNames = [...matchedFoodNames, substitutable]
+				const efficiency = calculateComboEfficiency(newMatchedFoodNames, combo.price)
+
+				if (efficiency > 0.2) {
+					const originalFood = allFoods.find(f => f.id === unmatchedFoodName)
+					const substitutedFood = allFoods.find(f => f.id === substitutable)
+
+					matches.push({
+						combo,
+						type: 'substitution',
+						matchedFoodIds: newMatchedFoodNames,
+						substitutionInfo: {
+							original: originalFood?.nameZh || originalFood?.name || unmatchedFoodName,
+							substituted: substitutedFood?.nameZh || substitutedFood?.name || substitutable,
+							category: unmatchedFood.category
+						},
+						efficiency
+					})
+				}
+			}
+		}
+	}
+
+	return matches.sort((a, b) => b.matchedFoodIds.length - a.matchedFoodIds.length).slice(0, 5)
+}
+
+/**
+ * 计算套餐效率
+ */
+function calculateComboEfficiency(matchedFoodNames, comboPrice) {
+	if (!comboPrice || comboPrice <= 0) return 0
+
+	const dataStore = useDataStore()
+	const soloPrice = matchedFoodNames.reduce((sum, foodName) => {
+		const food = dataStore.allFoods.find(f => f.id === foodName)
 		return sum + (food?.soloPrice || 0)
 	}, 0)
 
-	// 防止除以0或价格异常
+	return soloPrice / comboPrice
+}
+
+/**
+ * 排序推荐结果
+ */
+function rankRecommendations(recommendations, dataStore) {
+	const allComboFoods = dataStore.allComboFoods
+	const comboFoodIndex = buildComboFoodIndex(allComboFoods)
+
+	const withEfficiency = recommendations.map(rec => ({
+		...rec,
+		costEfficiency: calculateCostEfficiency(rec, comboFoodIndex, dataStore)
+	}))
+
+	return withEfficiency.sort(sortRecommendations)
+}
+
+/**
+ * 计算性价比
+ */
+function calculateCostEfficiency(recommendation, comboFoodIndex, dataStore) {
+	const { combo, type, matchedFoodIds } = recommendation
+
+	if (type === 'multi_combo') {
+		return recommendation.combinedEfficiency || 0
+	}
+
+	// 计算匹配食物的单点总价
+	const soloPrice = matchedFoodIds.reduce((sum, foodName) => {
+		const food = dataStore.allFoods.find(f => f.id === foodName)
+		return sum + (food?.soloPrice || 0)
+	}, 0)
+
 	if (!combo.price || combo.price <= 0) return 0
 
-	if (type === 'exact') {
-		return soloPrice / combo.price
-	}
+	// 计算浪费值
+	const comboFoodNames = comboFoodIndex.get(combo.id) || []
+	const matchedSet = new Set(matchedFoodIds)
+	const wasteFoodNames = comboFoodNames.filter(name => !matchedSet.has(name))
+	const wasteSoloPrice = wasteFoodNames.reduce((sum, foodName) => {
+		const food = dataStore.allFoods.find(f => f.id === foodName)
+		return sum + (food?.soloPrice || 0)
+	}, 0)
 
-	// 部分匹配：考虑匹配度权重
-	const totalItemsInCombo = allComboFoods.filter(cf => cf.comboId === combo.id).length
-	// 防止空套餐报错
-	const matchRatio = totalItemsInCombo > 0 ? (matchedFoodIds.length / totalItemsInCombo) : 0
+	// 有效价值 = 匹配物品总价 - 浪费惩罚
+	const effectiveValue = soloPrice - wasteSoloPrice * WASTE_PENALTY_WEIGHT
 
-	return (soloPrice / combo.price) * matchRatio
+	return Math.max(0, effectiveValue / combo.price)
 }
 
 /**
- * 计算匹配的食物ID (修复：基于数量的交集计算)
- */
-function calculateMatchedFoods(comboId, selectedFoodIds, allComboFoods) {
-	const comboFoodIds = allComboFoods
-		.filter(cf => cf.comboId === comboId)
-		.map(cf => cf.foodId)
-
-	const userRequirementMap = getFrequencyMap(selectedFoodIds)
-	const comboProvideMap = getFrequencyMap(comboFoodIds)
-
-	const matchedIds = []
-
-	// 取两者的交集（按最小数量）
-	for (const foodId of Object.keys(userRequirementMap)) {
-		const required = userRequirementMap[foodId] || 0
-		const provided = comboProvideMap[foodId] || 0
-		const matchCount = Math.min(required, provided)
-
-		for (let i = 0; i < matchCount; i++) {
-			matchedIds.push(foodId)
-		}
-	}
-
-	return matchedIds
-}
-
-/**
- * 排序推荐
+ * 排序函数
  */
 function sortRecommendations(a, b) {
-	// 1. 精确匹配优先
-	if (a.type !== b.type) return a.type === 'exact' ? -1 : 1
+	const typeOrder = { exact: 0, multi_combo: 1, substitution: 2, partial: 3 }
+	if (typeOrder[a.type] !== typeOrder[b.type]) {
+		return typeOrder[a.type] - typeOrder[b.type]
+	}
 
-	// 2. 性价比降序
 	if (a.costEfficiency !== b.costEfficiency) {
 		return b.costEfficiency - a.costEfficiency
 	}
 
-	// 3. 价格升序
 	if (a.combo.price !== b.combo.price) {
 		return a.combo.price - b.combo.price
 	}
 
-	return 0
+	return a.combo.id.localeCompare(b.combo.id)
 }
+
+// --- 导出辅助函数 ---
 
 export function getExactMatches(recommendations) {
 	return recommendations.filter(item => item.type === 'exact')
 }
 
-export function getHighValueMatches(recommendations) {
-	return recommendations.filter(item => item.type === 'partial' && item.costEfficiency > 1)
+export function getMultiComboMatches(recommendations) {
+	return recommendations.filter(item => item.type === 'multi_combo')
+}
+
+export function getSubstitutionMatches(recommendations) {
+	return recommendations.filter(item => item.type === 'substitution')
 }
 
 export function getPartialMatches(recommendations) {
-	return recommendations.filter(item => item.type === 'partial' && item.costEfficiency <= 1)
+	return recommendations.filter(item => item.type === 'partial')
 }
 
 /**
  * 计算节省金额
  */
-export function calculateSavedAmount(recommendation, selectedFoodIds, dataStore) {
-	const {
-		combo,
-		matchedFoodIds
-	} = recommendation
-	const soloPrice = matchedFoodIds.reduce((sum, foodId) => {
-		const food = dataStore.getFoodById(foodId)
+export function calculateSavedAmount(recommendation, dataStore) {
+	const { combo, matchedFoodIds } = recommendation
+	const soloPrice = matchedFoodIds.reduce((sum, foodName) => {
+		const food = dataStore.allFoods.find(f => f.id === foodName)
 		return sum + (food?.soloPrice || 0)
 	}, 0)
 

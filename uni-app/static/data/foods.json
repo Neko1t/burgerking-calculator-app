@@ -1,0 +1,109 @@
+{
+  "foods": [
+    {
+      "name": "whopper",
+      "nameZh": "皇堡",
+      "soloPrice": 28.5,
+      "category": "主食",
+      "calories": 530
+    },
+    {
+      "name": "fries_l",
+      "nameZh": "薯霸王(大)",
+      "soloPrice": 12.0,
+      "category": "小食",
+      "calories": 380
+    },
+    {
+      "name": "fries_m",
+      "nameZh": "薯霸王(中)",
+      "soloPrice": 9.0,
+      "category": "小食",
+      "calories": 280
+    },
+    {
+      "name": "coke_l",
+      "nameZh": "可口可乐(大)",
+      "soloPrice": 8.5,
+      "category": "饮料",
+      "calories": 210
+    },
+    {
+      "name": "coke_m",
+      "nameZh": "可口可乐(中)",
+      "soloPrice": 6.5,
+      "category": "饮料",
+      "calories": 150
+    },
+    {
+      "name": "nuggets_5",
+      "nameZh": "鸡块(5块)",
+      "soloPrice": 11.5,
+      "category": "小食",
+      "calories": 250
+    },
+    {
+      "name": "nuggets_3",
+      "nameZh": "鸡块(3块)",
+      "soloPrice": 7.5,
+      "category": "小食",
+      "calories": 150
+    },
+    {
+      "name": "corn_cup",
+      "nameZh": "玉米杯",
+      "soloPrice": 8.0,
+      "category": "小食",
+      "calories": 140
+    },
+    {
+      "name": "onion_rings",
+      "nameZh": "洋葱圈",
+      "soloPrice": 10.5,
+      "category": "小食",
+      "calories": 290
+    },
+    {
+      "name": "ice_cream",
+      "nameZh": "冰淇淋(单球)",
+      "soloPrice": 5.0,
+      "category": "甜品",
+      "calories": 90
+    },
+    {
+      "name": "coffee_s",
+      "nameZh": "美式咖啡(小)",
+      "soloPrice": 7.0,
+      "category": "饮料",
+      "calories": 5
+    },
+    {
+      "name": "angus_beef",
+      "nameZh": "安格斯牛肉堡",
+      "soloPrice": 35.0,
+      "category": "主食",
+      "calories": 450
+    },
+    {
+      "name": "spicy_chicken",
+      "nameZh": "香辣鸡腿堡",
+      "soloPrice": 25.0,
+      "category": "主食",
+      "calories": 380
+    },
+    {
+      "name": "waffle",
+      "nameZh": "华夫饼",
+      "soloPrice": 12.0,
+      "category": "甜品",
+      "calories": 200
+    },
+    {
+      "name": "salad",
+      "nameZh": "鲜蔬沙拉",
+      "soloPrice": 8.0,
+      "category": "甜品",
+      "calories": 50
+    }
+  ]
+}

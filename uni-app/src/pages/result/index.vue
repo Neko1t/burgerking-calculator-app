@@ -141,7 +141,7 @@
 
 					<!-- 无结果 -->
 					<view class="no-results"
-						v-if="exactMatches.length === 0 && highValueMatches.length === 0 && partialMatches.length === 0">
+						v-if="exactMatches.length === 0 && highValueMatches.length === 0 && partialMatches.length === 0 && multiComboMatches.length === 0 && substitutionMatches.length === 0">
 						<view class="no-results-icon">🔍</view>
 						<text class="no-results-text">没有找到匹配的套餐</text>
 						<text class="no-results-hint">请尝试选择其他菜品组合</text>
@@ -185,8 +185,8 @@
 						</view>
 						<view class="detail-foods">
 							<view v-for="food in selectedComboFoods" :key="food.id" class="detail-food-item">
-								<text class="detail-food-name">{{ food.name }}</text>
-								<text class="detail-food-price">×{{ food.quantity }}</text>
+								<text class="detail-food-name">{{ food.nameZh || food.name }}</text>
+								<text class="detail-food-price">×{{ food.quantity || 1 }}</text>
 							</view>
 						</view>
 					</view>
@@ -229,40 +229,53 @@
 	const exactMatches = ref([])
 	const highValueMatches = ref([])
 	const partialMatches = ref([])
+	const multiComboMatches = ref([])
+	const substitutionMatches = ref([])
 
 	// 详情弹窗
 	const showDetailModal = ref(false)
 	const selectedCombo = ref(null)
 	const selectedComboFoods = ref([])
 
-	// 获取URL参数中的食物ID
-	const selectedFoodIds = ref([])
+	// 获取URL参数中的食物名称
+	const selectedFoodNames = ref([])
 
 	// 计算推荐
 	const calculateRecommendations = async () => {
 		loading.value = true
 
 		try {
-			const selectedFoods = dataStore.foods.filter(food => selectedFoodIds.value.includes(food.id))
+			// 确保数据已加载
+			await dataStore.init()
+
+			const selectedFoods = dataStore.allFoods.filter(food => selectedFoodNames.value.includes(food.id))
 
 			if (selectedFoods.length === 0) {
 				loading.value = false
 				return
 			}
 
-			const recommendations = recommendCombos(selectedFoodIds.value)
+			const recommendations = recommendCombos(selectedFoodNames.value)
 
 			recommendations.forEach(rec => {
-				rec.savedAmount = calculateSavedAmount(rec, selectedFoodIds.value, dataStore)
-				rec.matchRatio = rec.matchedFoodIds.length / dataStore.comboFoods.filter(cf => cf
-					.comboId === rec.combo.id).length
+				rec.savedAmount = calculateSavedAmount(rec, dataStore)
+				// 对于 multi_combo 类型，使用 componentCombos 计算
+				if (rec.type === 'multi_combo' && rec.combo.componentCombos) {
+					const totalFoodCount = rec.combo.componentCombos.reduce((sum, c) => {
+						return sum + dataStore.comboFoods.filter(cf => cf.comboId === c.id).length
+					}, 0)
+					rec.matchRatio = rec.matchedFoodIds.length / totalFoodCount
+				} else {
+					rec.matchRatio = rec.matchedFoodIds.length / dataStore.comboFoods.filter(cf => cf
+						.comboId === rec.combo.id).length
+				}
 			})
 
 			exactMatches.value = recommendations.filter(item => item.type === 'exact')
-			highValueMatches.value = recommendations.filter(item => item.type === 'partial' && item
-				.costEfficiency > 1)
-			partialMatches.value = recommendations.filter(item => item.type === 'partial' && item.costEfficiency <=
-				1)
+			highValueMatches.value = recommendations.filter(item => item.type === 'partial' && item.costEfficiency > 1)
+			partialMatches.value = recommendations.filter(item => item.type === 'partial' && item.costEfficiency <= 1)
+			multiComboMatches.value = recommendations.filter(item => item.type === 'multi_combo')
+			substitutionMatches.value = recommendations.filter(item => item.type === 'substitution')
 		} catch (error) {
 			console.error('计算推荐时出错:', error)
 		} finally {
@@ -282,7 +295,7 @@
 	const showComboDetail = (item) => {
 		selectedCombo.value = item.combo
 		// 获取套餐包含的食物
-		const comboFoods = dataStore.comboFoods.filter(cf => cf.comboId === item.combo.id)
+		const comboFoods = dataStore.allComboFoods.filter(cf => cf.comboId === item.combo.id)
 		selectedComboFoods.value = comboFoods.map(cf => {
 			const food = dataStore.getFoodById(cf.foodId)
 			return { ...food, quantity: cf.quantity }
@@ -305,10 +318,10 @@
 
 	// 获取套餐食物摘要
 	const getComboFoodsSummary = (comboId) => {
-		const comboFoods = dataStore.comboFoods.filter(cf => cf.comboId === comboId)
+		const comboFoods = dataStore.allComboFoods.filter(cf => cf.comboId === comboId)
 		const names = comboFoods.slice(0, 3).map(cf => {
 			const food = dataStore.getFoodById(cf.foodId)
-			return food?.name || ''
+			return food?.nameZh || food?.name || ''
 		}).filter(Boolean)
 		const suffix = comboFoods.length > 3 ? '...' : ''
 		return names.join(' + ') + suffix
@@ -354,11 +367,11 @@
 		const currentPage = pages[pages.length - 1]
 		const options = currentPage.options || {}
 
-		if (options.foodIds) {
+		if (options.foodNames) {
 			try {
-				selectedFoodIds.value = JSON.parse(decodeURIComponent(options.foodIds))
+				selectedFoodNames.value = JSON.parse(decodeURIComponent(options.foodNames))
 			} catch (e) {
-				selectedFoodIds.value = []
+				selectedFoodNames.value = []
 			}
 		}
 

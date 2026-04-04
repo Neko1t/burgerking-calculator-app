@@ -1,0 +1,38 @@
+{
+  "comboFoods": [
+    {"comboId": "combo_001", "foodName": "whopper", "quantity": 1},
+    {"comboId": "combo_001", "foodName": "fries_m", "quantity": 1},
+    {"comboId": "combo_001", "foodName": "coke_m", "quantity": 1},
+
+    {"comboId": "combo_002", "foodName": "nuggets_5", "quantity": 1},
+    {"comboId": "combo_002", "foodName": "fries_m", "quantity": 1},
+    {"comboId": "combo_002", "foodName": "coke_m", "quantity": 1},
+
+    {"comboId": "combo_003", "foodName": "whopper", "quantity": 1},
+    {"comboId": "combo_003", "foodName": "fries_l", "quantity": 1},
+    {"comboId": "combo_003", "foodName": "coke_l", "quantity": 1},
+    {"comboId": "combo_003", "foodName": "nuggets_3", "quantity": 1},
+
+    {"comboId": "combo_004", "foodName": "angus_beef", "quantity": 1},
+    {"comboId": "combo_004", "foodName": "fries_m", "quantity": 1},
+    {"comboId": "combo_004", "foodName": "coke_m", "quantity": 1},
+
+    {"comboId": "combo_005", "foodName": "nuggets_3", "quantity": 1},
+    {"comboId": "combo_005", "foodName": "coke_m", "quantity": 1},
+
+    {"comboId": "combo_006", "foodName": "spicy_chicken", "quantity": 1},
+    {"comboId": "combo_006", "foodName": "fries_m", "quantity": 1},
+    {"comboId": "combo_006", "foodName": "coke_m", "quantity": 1},
+
+    {"comboId": "combo_007", "foodName": "ice_cream", "quantity": 1},
+    {"comboId": "combo_007", "foodName": "salad", "quantity": 1},
+
+    {"comboId": "combo_008", "foodName": "waffle", "quantity": 1},
+    {"comboId": "combo_008", "foodName": "fries_m", "quantity": 1}
+  ],
+  "metadata": {
+    "version": "2.0.0",
+    "lastUpdate": "2026-04-04T00:00:00Z",
+    "note": "使用foodName作为关联键"
+  }
+}

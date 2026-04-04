@@ -24,18 +24,23 @@
 			<scroll-view class="food-scroll" scroll-y>
 				<view class="food-list">
 					<view v-for="food in filteredFoods" :key="food.id" class="food-item"
-						@click="toggleFoodSelection(food)" :class="{'selected': isSelected(food)}">
+						:class="{'selected': getSelectedCount(food) > 0}">
 						<view class="food-info">
-							<text class="food-name">{{ food.name }}</text>
+							<text class="food-name">{{ food.nameZh || food.name }}</text>
 							<text class="food-price">¥{{ food.soloPrice || '待定' }}</text>
 						</view>
 						<view class="food-actions">
-							<text class="food-count" v-if="getSelectedCount(food) > 0">
-								{{ getSelectedCount(food) }}
-							</text>
-							<view class="food-icon" :class="isSelected(food) ? 'selected' : ''">
-								<uni-icons :type="isSelected(food) ? 'checkbox-filled' : 'plus'" :size="20"
-									:color="isSelected(food) ? '#fff' : '#999'"></uni-icons>
+							<view class="food-count-control" v-if="getSelectedCount(food) > 0">
+								<view class="count-btn minus" @click.stop="decreaseFood(food)">
+									<uni-icons type="minus" size="12" color="#fff"></uni-icons>
+								</view>
+								<text class="food-count">{{ getSelectedCount(food) }}</text>
+								<view class="count-btn plus" @click.stop="increaseFood(food)">
+									<uni-icons type="plus" size="12" color="#fff"></uni-icons>
+								</view>
+							</view>
+							<view v-else class="food-add-btn" @click.stop="increaseFood(food)">
+								<uni-icons type="plus" size="20" color="#999"></uni-icons>
 							</view>
 						</view>
 					</view>
@@ -86,13 +91,19 @@
 					<scroll-view class="cart-list" scroll-y v-else>
 						<view v-for="item in cartItems" :key="item.food.id" class="cart-item">
 							<view class="cart-item-info">
-								<text class="cart-item-name">{{ item.food.name }}</text>
+								<text class="cart-item-name">{{ item.food.nameZh || item.food.name }}</text>
 								<text class="cart-item-price">¥{{ item.food.soloPrice }} × {{ item.count }}</text>
 							</view>
 							<view class="cart-item-actions">
 								<view class="cart-item-subtotal">¥{{ (item.food.soloPrice * item.count).toFixed(2) }}</view>
-								<view class="cart-item-delete" @click="removeFromCart(item.food.id)">
-									<uni-icons type="minus" size="14" color="#ff6b35"></uni-icons>
+								<view class="cart-item-count-control">
+									<view class="cart-count-btn" @click="decreaseCartItem(item.food)">
+										<uni-icons type="minus" size="12" color="#fff"></uni-icons>
+									</view>
+									<text class="cart-item-count">{{ item.count }}</text>
+									<view class="cart-count-btn plus" @click="increaseCartItem(item.food)">
+										<uni-icons type="plus" size="12" color="#fff"></uni-icons>
+									</view>
 								</view>
 							</view>
 						</view>
@@ -153,7 +164,7 @@
 	// 选中的分类
 	const selectedCategory = ref('主食')
 
-	// 选中的食物列表
+	// 选中的食物列表（使用foodName作为ID）
 	const selectedFoods = ref([])
 
 	// 购物车弹窗
@@ -187,9 +198,27 @@
 		showCart.value = false
 	}
 
-	// 从购物车移除一个
-	const removeFromCart = (foodId) => {
-		const index = selectedFoods.value.findIndex(f => f.id === foodId)
+	// 增加食物（使用foodName作为标识）
+	const increaseFood = (food) => {
+		selectedFoods.value.push(food)
+	}
+
+	// 减少食物
+	const decreaseFood = (food) => {
+		const index = selectedFoods.value.findIndex(f => f.id === food.id)
+		if (index !== -1) {
+			selectedFoods.value.splice(index, 1)
+		}
+	}
+
+	// 购物车内增加一个
+	const increaseCartItem = (food) => {
+		selectedFoods.value.push(food)
+	}
+
+	// 购物车内减少一个
+	const decreaseCartItem = (food) => {
+		const index = selectedFoods.value.findIndex(f => f.id === food.id)
 		if (index !== -1) {
 			selectedFoods.value.splice(index, 1)
 		}
@@ -210,21 +239,6 @@
 		selectedCategory.value = categoryId
 	}
 
-	// 切换食物选择
-	const toggleFoodSelection = (food) => {
-		const index = selectedFoods.value.findIndex(f => f.id === food.id)
-		if (index === -1) {
-			selectedFoods.value.push(food)
-		} else {
-			selectedFoods.value.splice(index, 1)
-		}
-	}
-
-	// 检查食物是否被选中
-	const isSelected = (food) => {
-		return selectedFoods.value.some(f => f.id === food.id)
-	}
-
 	// 获取选中数量
 	const getSelectedCount = (food) => {
 		return selectedFoods.value.filter(f => f.id === food.id).length
@@ -239,18 +253,17 @@
 	const calculateRecommendations = () => {
 		if (selectedFoods.value.length === 0) return
 
-		// 获取选中的食物ID
-		const selectedFoodIds = selectedFoods.value.map(f => f.id)
+		// 获取选中的食物名称（使用foodName/id）
+		const selectedFoodNames = selectedFoods.value.map(f => f.id)
 
 		// 跳转到结果页并传递数据
 		uni.navigateTo({
-			url: `/pages/result/index?foodIds=${encodeURIComponent(JSON.stringify(selectedFoodIds))}`
+			url: `/pages/result/index?foodNames=${encodeURIComponent(JSON.stringify(selectedFoodNames))}`
 		})
 	}
 </script>
 
 <style lang="scss" scoped>
-	/* ===== CSS变量 - 统一颜色和字体 ===== */
 	page {
 		--color-primary: #e09550;
 		--color-primary-light: #f0b27a;
@@ -275,22 +288,10 @@
 		--letter-spacing-wide: 0.05em;
 	}
 
-	/* ===== 动画定义 ===== */
 	@keyframes fadeInUp {
 		from {
 			opacity: 0;
 			transform: translateY(20rpx);
-		}
-		to {
-			opacity: 1;
-			transform: translateY(0);
-		}
-	}
-
-	@keyframes slideUp {
-		from {
-			opacity: 0;
-			transform: translateY(100%);
 		}
 		to {
 			opacity: 1;
@@ -307,7 +308,6 @@
 		}
 	}
 
-	/* ===== 容器 ===== */
 	.container {
 		position: relative;
 		display: flex;
@@ -319,7 +319,6 @@
 		font-family: var(--font-family);
 	}
 
-	/* ===== 头部 ===== */
 	.header {
 		padding: 24rpx 32rpx;
 		background: var(--color-primary-gradient);
@@ -336,17 +335,6 @@
 		width: 350rpx;
 		height: 350rpx;
 		background: radial-gradient(circle, rgba(255,255,255,0.18) 0%, transparent 65%);
-		border-radius: 50%;
-	}
-
-	.header::after {
-		content: '';
-		position: absolute;
-		bottom: -40%;
-		left: 5%;
-		width: 200rpx;
-		height: 200rpx;
-		background: radial-gradient(circle, rgba(255,255,255,0.08) 0%, transparent 70%);
 		border-radius: 50%;
 	}
 
@@ -383,7 +371,6 @@
 		letter-spacing: 0.5px;
 	}
 
-	/* ===== 分类标签 ===== */
 	.category-tabs {
 		display: flex;
 		justify-content: space-around;
@@ -405,7 +392,6 @@
 		border-radius: 16rpx;
 		margin: 0 4rpx;
 		transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-		letter-spacing: var(--letter-spacing-normal);
 	}
 
 	.tab.active {
@@ -419,7 +405,6 @@
 		transform: scale(0.96);
 	}
 
-	/* ===== 食物列表 ===== */
 	.food-scroll {
 		flex: 1;
 		min-height: 0;
@@ -448,7 +433,7 @@
 	.food-item:nth-child(2) { animation-delay: 0.08s; }
 	.food-item:nth-child(3) { animation-delay: 0.12s; }
 	.food-item:nth-child(4) { animation-delay: 0.16s; }
-	.food-item:nth-child(5) { animation-delay: 0.2s; }
+	.food-item:nth-child(5) { animation-delay: 0.20s; }
 	.food-item:nth-child(6) { animation-delay: 0.24s; }
 
 	.food-item:active {
@@ -470,13 +455,11 @@
 		color: var(--color-text);
 		font-weight: 600;
 		margin-bottom: 6rpx;
-		letter-spacing: var(--letter-spacing-tight);
 	}
 
 	.food-price {
 		font-size: var(--font-size-sm);
 		color: var(--color-text-tertiary);
-		font-weight: 400;
 	}
 
 	.food-actions {
@@ -489,12 +472,45 @@
 		font-size: var(--font-size-md);
 		color: var(--color-primary);
 		font-weight: 700;
-		min-width: 36rpx;
+		min-width: 40rpx;
 		text-align: center;
-		letter-spacing: var(--letter-spacing-tight);
 	}
 
-	.food-icon {
+	.food-count-control {
+		display: flex;
+		align-items: center;
+		gap: 12rpx;
+	}
+
+	.count-btn {
+		width: 44rpx;
+		height: 44rpx;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		border-radius: 50%;
+		transition: all 0.2s ease;
+	}
+
+	.count-btn.minus {
+		background-color: #e8e8e8;
+	}
+
+	.count-btn.minus:active {
+		background-color: #d0d0d0;
+		transform: scale(0.92);
+	}
+
+	.count-btn.plus {
+		background: var(--color-primary-gradient);
+		box-shadow: 0 4rpx 12rpx rgba(232, 93, 4, 0.35);
+	}
+
+	.count-btn.plus:active {
+		transform: scale(0.92);
+	}
+
+	.food-add-btn {
 		width: 56rpx;
 		height: 56rpx;
 		display: flex;
@@ -502,19 +518,14 @@
 		justify-content: center;
 		background-color: #f8f8f8;
 		border-radius: 50%;
-		transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+		transition: all 0.2s ease;
 	}
 
-	.food-icon.selected {
-		background: var(--color-primary-gradient);
-		box-shadow: 0 4rpx 14rpx rgba(232, 93, 4, 0.4);
+	.food-add-btn:active {
+		background-color: #efefef;
+		transform: scale(0.92);
 	}
 
-	.food-icon:active {
-		animation: pulse 0.25s ease;
-	}
-
-	/* ===== 底部浮窗 ===== */
 	.bottom-float-bar {
 		position: fixed;
 		left: 0;
@@ -524,7 +535,6 @@
 		padding-bottom: calc(16rpx + env(safe-area-inset-bottom));
 		background-color: transparent;
 		z-index: 999;
-		margin-bottom: 100rpx;
 	}
 
 	.bottom-float-bar-inner {
@@ -542,11 +552,6 @@
 		padding: 22rpx 26rpx;
 	}
 
-	.float-bar-left {
-		display: flex;
-		align-items: center;
-	}
-
 	.selected-info {
 		display: flex;
 		flex-direction: column;
@@ -556,14 +561,12 @@
 	.selected-count {
 		font-size: var(--font-size-xs);
 		color: var(--color-text-tertiary);
-		letter-spacing: 0.5px;
 	}
 
 	.selected-price {
 		font-size: var(--font-size-xxl);
 		color: var(--color-primary);
 		font-weight: 700;
-		letter-spacing: -0.02em;
 	}
 
 	.float-bar-right {
@@ -609,14 +612,12 @@
 
 	.calculate-btn:active {
 		transform: scale(0.95);
-		box-shadow: 0 4rpx 12rpx rgba(232, 93, 4, 0.25);
 	}
 
 	.calculate-btn text {
 		font-size: var(--font-size-md);
 		color: #fff;
 		font-weight: 600;
-		letter-spacing: 0.5px;
 	}
 
 	.cart-btn {
@@ -642,7 +643,6 @@
 		font-weight: 600;
 	}
 
-	/* ===== 购物车弹窗 ===== */
 	.cart-modal-overlay {
 		position: fixed;
 		top: 0;
@@ -691,7 +691,6 @@
 		font-size: var(--font-size-lg);
 		font-weight: 700;
 		color: var(--color-text);
-		letter-spacing: var(--letter-spacing-tight);
 	}
 
 	.cart-close {
@@ -716,11 +715,6 @@
 		flex-direction: column;
 		align-items: center;
 		gap: 16rpx;
-	}
-
-	.cart-empty-icon {
-		font-size: 80rpx;
-		opacity: 0.4;
 	}
 
 	.cart-empty-text {
@@ -753,7 +747,6 @@
 		display: block;
 		margin-bottom: 6rpx;
 		font-weight: 600;
-		letter-spacing: var(--letter-spacing-tight);
 	}
 
 	.cart-item-price {
@@ -771,23 +764,45 @@
 		font-size: var(--font-size-md);
 		color: var(--color-primary);
 		font-weight: 700;
-		letter-spacing: var(--letter-spacing-tight);
 	}
 
-	.cart-item-delete {
-		width: 48rpx;
-		height: 48rpx;
+	.cart-item-count-control {
+		display: flex;
+		align-items: center;
+		gap: 12rpx;
+	}
+
+	.cart-count-btn {
+		width: 44rpx;
+		height: 44rpx;
 		display: flex;
 		align-items: center;
 		justify-content: center;
-		background-color: #fff5f0;
+		background-color: #f0f0f0;
 		border-radius: 50%;
 		transition: all 0.2s ease;
 	}
 
-	.cart-item-delete:active {
+	.cart-count-btn:active {
 		transform: scale(0.9);
-		background-color: #ffe8dc;
+		background-color: #e0e0e0;
+	}
+
+	.cart-count-btn.plus {
+		background: var(--color-primary-gradient);
+		box-shadow: 0 4rpx 12rpx rgba(232, 93, 4, 0.35);
+	}
+
+	.cart-count-btn.plus:active {
+		transform: scale(0.9);
+	}
+
+	.cart-item-count {
+		font-size: var(--font-size-md);
+		color: var(--color-text);
+		font-weight: 600;
+		min-width: 36rpx;
+		text-align: center;
 	}
 
 	.cart-footer {
@@ -816,7 +831,6 @@
 		font-size: var(--font-size-xl);
 		color: var(--color-primary);
 		font-weight: 700;
-		letter-spacing: var(--letter-spacing-tight);
 	}
 
 	.cart-clear-btn {

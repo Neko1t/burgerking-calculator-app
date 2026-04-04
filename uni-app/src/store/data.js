@@ -1,6 +1,10 @@
 import { defineStore } from 'pinia'
 
+// CDN数据源地址
 const CDN_BASE = 'https://cdn.jsdelivr.net/gh/Neko1t/burgerking-calculator@master/data'
+
+// 本地静态数据源（用于开发/离线）
+const LOCAL_DATA_BASE = '/static/data'
 
 export const useDataStore = defineStore('data', {
 	state: () => ({
@@ -24,7 +28,10 @@ export const useDataStore = defineStore('data', {
 
 		// 加载状态
 		isLoading: false,
-		isSyncing: false
+		isSyncing: false,
+
+		// 数据来源：true=CDN, false=本地
+		useCDN: true
 	}),
 
 	getters: {
@@ -44,12 +51,12 @@ export const useDataStore = defineStore('data', {
 			return [...cdnFiltered, ...state.localCombos]
 		},
 
-		// 合并后的套餐食物关联
+		// 合并后的套餐食物关联（使用foodName）
 		allComboFoods: (state) => {
 			const cdnFiltered = state.cdnComboFoods.filter(
 				cf => !state.deletedItems.some(d =>
 					(d.type === 'combo' && d.id === cf.comboId) ||
-					(d.type === 'food' && d.id === cf.foodId)
+					(d.type === 'food' && d.id === cf.foodName)
 				)
 			)
 			return [...cdnFiltered, ...state.localComboFoods]
@@ -76,7 +83,7 @@ export const useDataStore = defineStore('data', {
 			const cdnFiltered = state.cdnComboFoods.filter(
 				cf => !state.deletedItems.some(d =>
 					(d.type === 'combo' && d.id === cf.comboId) ||
-					(d.type === 'food' && d.id === cf.foodId)
+					(d.type === 'food' && d.id === cf.foodName)
 				)
 			)
 			return [...cdnFiltered, ...state.localComboFoods]
@@ -107,8 +114,8 @@ export const useDataStore = defineStore('data', {
 				// 1. 尝试从本地存储加载
 				this.loadFromLocal()
 
-				// 2. 检查CDN更新
-				await this.syncFromCDN()
+				// 2. 加载静态数据
+				await this.loadStaticData()
 			} finally {
 				this.isLoading = false
 			}
@@ -156,25 +163,89 @@ export const useDataStore = defineStore('data', {
 			}
 		},
 
-		// 从CDN同步数据
+		// 加载静态数据（本地JSON文件）
+		async loadStaticData() {
+			try {
+				const [foodsData, combosData, comboFoodsData] = await Promise.all([
+					this.fetchStaticData('foods.json'),
+					this.fetchStaticData('combos.json'),
+					this.fetchStaticData('combo_foods.json')
+				])
+
+				// 处理foods数据：使用name作为主键
+				this.cdnFoods = (foodsData.foods || []).map(food => ({
+					...food,
+					id: food.name  // 使用name作为id
+				}))
+
+				// 处理combos数据
+				this.cdnCombos = combosData.combos || []
+
+				// 处理comboFoods数据：使用foodName替代foodId
+				this.cdnComboFoods = (comboFoodsData.comboFoods || []).map(cf => ({
+					comboId: cf.comboId,
+					foodId: cf.foodName,  // 将foodName映射为foodId
+					foodName: cf.foodName, // 保留原始foodName
+					quantity: cf.quantity
+				}))
+
+				this.cdnVersion = comboFoodsData.metadata?.version || '2.0.0'
+
+				// 保存到缓存
+				uni.setStorageSync('cdn_data_cache', {
+					cdnFoods: this.cdnFoods,
+					cdnCombos: this.cdnCombos,
+					cdnComboFoods: this.cdnComboFoods,
+					version: this.cdnVersion
+				})
+
+				this.lastSyncTime = new Date().toISOString()
+			} catch (error) {
+				console.error('加载静态数据失败:', error)
+			}
+		},
+
+		// 获取静态数据
+		fetchStaticData(filename) {
+			return new Promise((resolve, reject) => {
+				uni.request({
+					url: `${LOCAL_DATA_BASE}/${filename}`,
+					method: 'GET',
+					success: (res) => {
+						if (res.statusCode >= 200 && res.statusCode < 300) {
+							resolve(res.data)
+						} else {
+							reject(new Error(`获取${filename}失败: HTTP状态码 ${res.statusCode}`))
+						}
+					},
+					fail: (err) => {
+						reject(err)
+					}
+				})
+			})
+		},
+
+		// 从CDN同步数据（旧接口，保留兼容性）
 		async syncFromCDN() {
 			this.isSyncing = true
 			try {
-				const metadata = await this.fetchData('metadata.json')
-
-				// 下载CDN数据
 				const [foodsData, combosData, comboFoodsData] = await Promise.all([
 					this.fetchData('foods.json'),
 					this.fetchData('combos.json'),
 					this.fetchData('combo_foods.json')
 				])
 
-				this.cdnFoods = foodsData.foods || []
+				this.cdnFoods = (foodsData.foods || []).map(food => ({
+					...food,
+					id: food.name
+				}))
 				this.cdnCombos = combosData.combos || []
-				this.cdnComboFoods = comboFoodsData.comboFoods || []
-				this.cdnVersion = metadata.version
+				this.cdnComboFoods = (comboFoodsData.comboFoods || []).map(cf => ({
+					...cf,
+					foodId: cf.foodName
+				}))
+				this.cdnVersion = comboFoodsData.metadata?.version || '2.0.0'
 
-				// 保存到CDN缓存
 				uni.setStorageSync('cdn_data_cache', {
 					cdnFoods: this.cdnFoods,
 					cdnCombos: this.cdnCombos,
@@ -185,15 +256,6 @@ export const useDataStore = defineStore('data', {
 				this.lastSyncTime = new Date().toISOString()
 			} catch (error) {
 				console.error('从CDN同步数据失败:', error)
-				// 如果CDN加载失败，使用本地缓存
-				if (this.cdnFoods.length === 0) {
-					const cdnCache = uni.getStorageSync('cdn_data_cache')
-					if (cdnCache) {
-						this.cdnFoods = cdnCache.cdnFoods || []
-						this.cdnCombos = cdnCache.cdnCombos || []
-						this.cdnComboFoods = cdnCache.cdnComboFoods || []
-					}
-				}
 			} finally {
 				this.isSyncing = false
 			}
@@ -226,7 +288,7 @@ export const useDataStore = defineStore('data', {
 		addFood(food) {
 			const newFood = {
 				...food,
-				id: `local_food_${Date.now()}`,
+				id: food.name, // 使用name作为id
 				source: 'local',
 				createdAt: new Date().toISOString(),
 				updatedAt: new Date().toISOString()
@@ -267,7 +329,7 @@ export const useDataStore = defineStore('data', {
 			this.saveToLocal()
 		},
 
-		// 恢复CDN食物（从删除列表移除）
+		// 恢复CDN食物
 		restoreFood(foodId) {
 			this.deletedItems = this.deletedItems.filter(
 				d => !(d.type === 'food' && d.id === foodId)
@@ -276,7 +338,7 @@ export const useDataStore = defineStore('data', {
 		},
 
 		// 添加套餐
-		addCombo(combo, foodIds) {
+		addCombo(combo, foodNames) {
 			const newCombo = {
 				...combo,
 				id: `local_combo_${Date.now()}`,
@@ -286,10 +348,11 @@ export const useDataStore = defineStore('data', {
 			}
 			this.localCombos.push(newCombo)
 
-			// 添加套餐食物关联
-			const comboFoods = (foodIds || []).map(foodId => ({
+			// 添加套餐食物关联（使用foodName）
+			const comboFoods = (foodNames || []).map(foodName => ({
 				comboId: newCombo.id,
-				foodId,
+				foodId: foodName,
+				foodName: foodName,
 				quantity: 1
 			}))
 			this.localComboFoods.push(...comboFoods)
@@ -299,7 +362,7 @@ export const useDataStore = defineStore('data', {
 		},
 
 		// 更新套餐
-		updateCombo(comboId, updates, newFoodIds) {
+		updateCombo(comboId, updates, newFoodNames) {
 			const index = this.localCombos.findIndex(c => c.id === comboId)
 			if (index !== -1) {
 				this.localCombos[index] = {
@@ -308,12 +371,12 @@ export const useDataStore = defineStore('data', {
 					updatedAt: new Date().toISOString()
 				}
 
-				// 更新套餐食物关联
-				if (newFoodIds) {
+				if (newFoodNames) {
 					this.localComboFoods = this.localComboFoods.filter(cf => cf.comboId !== comboId)
-					const comboFoods = newFoodIds.map(foodId => ({
+					const comboFoods = newFoodNames.map(foodName => ({
 						comboId,
-						foodId,
+						foodId: foodName,
+						foodName: foodName,
 						quantity: 1
 					}))
 					this.localComboFoods.push(...comboFoods)
@@ -350,16 +413,16 @@ export const useDataStore = defineStore('data', {
 		// 获取单个套餐的所有食物
 		getComboFoods(comboId) {
 			const allFoods = this.allFoods
-			const comboFoodIds = this.allComboFoods
+			const comboFoodNames = this.allComboFoods
 				.filter(cf => cf.comboId === comboId)
 				.map(cf => cf.foodId)
-			return allFoods.filter(f => comboFoodIds.includes(f.id))
+			return allFoods.filter(f => comboFoodNames.includes(f.id))
 		},
 
 		// 获取食物所在的所有套餐
-		getCombosByFoodId(foodId) {
+		getCombosByFoodName(foodName) {
 			const comboIds = this.allComboFoods
-				.filter(cf => cf.foodId === foodId)
+				.filter(cf => cf.foodId === foodName)
 				.map(cf => cf.comboId)
 			return this.allCombos.filter(c => comboIds.includes(c.id))
 		},

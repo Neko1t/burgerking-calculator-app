@@ -37,3 +37,5 @@ coverage/
 *.log
 unpackage/
 data/
+!uni-app/static/data/
+SESSION_CONTEXT.md
