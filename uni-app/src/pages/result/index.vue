@@ -326,7 +326,11 @@
 			// 确保数据已加载
 			await dataStore.init()
 
+			console.log('[结果页] selectedFoodNames:', selectedFoodNames.value)
+			console.log('[结果页] allFoods数量:', dataStore.allFoods.length)
+
 			const selectedFoods = dataStore.allFoods.filter(food => selectedFoodNames.value.includes(food.id))
+			console.log('[结果页] 匹配到的食物数量:', selectedFoods.length)
 
 			if (selectedFoods.length === 0) {
 				loading.value = false
@@ -334,6 +338,8 @@
 			}
 
 			const recommendations = recommendCombos(selectedFoodNames.value)
+			console.log('[结果页] 推荐结果数量:', recommendations.length)
+			console.log('[结果页] 推荐结果类型:', recommendations.map(r => r.type))
 
 			recommendations.forEach(rec => {
 				rec.savedAmount = calculateSavedAmount(rec, dataStore)
@@ -354,6 +360,11 @@
 			partialMatches.value = recommendations.filter(item => item.type === 'partial' && item.costEfficiency <= 1)
 			multiComboMatches.value = recommendations.filter(item => item.type === 'multi_combo')
 			substitutionMatches.value = recommendations.filter(item => item.type === 'substitution')
+
+			console.log('[结果页] exactMatches:', exactMatches.value.length)
+			console.log('[结果页] multiComboMatches:', multiComboMatches.value.length)
+			console.log('[结果页] substitutionMatches:', substitutionMatches.value.length)
+			console.log('[结果页] partialMatches:', partialMatches.value.length)
 		} catch (error) {
 			console.error('计算推荐时出错:', error)
 		} finally {
