@@ -53,6 +53,7 @@ export function recommendCombos(selectedFoodNames) {
 	console.log('[算法] 需求频次:', userRequirementMap)
 
 	// 1. 精确匹配
+	// 收集所有类型的匹配结果
 	const exactMatches = findExactMatches(
 		selectedFoodNames,
 		userRequirementMap,
@@ -61,10 +62,6 @@ export function recommendCombos(selectedFoodNames) {
 	)
 
 	console.log('[算法] 精确匹配结果:', exactMatches.length)
-
-	if (exactMatches.length > 0) {
-		return rankRecommendations(exactMatches, dataStore)
-	}
 
 	// 2. 多套餐匹配
 	const multiComboMatches = findMultiComboMatches(
@@ -75,10 +72,6 @@ export function recommendCombos(selectedFoodNames) {
 	)
 
 	console.log('[算法] 多套餐匹配结果:', multiComboMatches.length)
-
-	if (multiComboMatches.length > 0) {
-		return rankRecommendations(multiComboMatches, dataStore)
-	}
 
 	// 3. 置换匹配
 	const substitutionMatches = findSubstitutionMatches(
@@ -91,10 +84,6 @@ export function recommendCombos(selectedFoodNames) {
 
 	console.log('[算法] 置换匹配结果:', substitutionMatches.length)
 
-	if (substitutionMatches.length > 0) {
-		return rankRecommendations(substitutionMatches, dataStore)
-	}
-
 	// 4. 部分匹配 - 任何能覆盖部分需求的套餐
 	const partialMatches = findPartialMatches(
 		selectedFoodNames,
@@ -106,7 +95,15 @@ export function recommendCombos(selectedFoodNames) {
 
 	console.log('[算法] 部分匹配结果:', partialMatches.length)
 
-	return rankRecommendations(partialMatches, dataStore)
+	// 合并所有结果并排序返回
+	const allMatches = [
+		...exactMatches,
+		...multiComboMatches,
+		...substitutionMatches,
+		...partialMatches
+	]
+
+	return rankRecommendations(allMatches, dataStore)
 }
 
 /**
