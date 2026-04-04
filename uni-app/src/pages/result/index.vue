@@ -23,224 +23,71 @@
 			<!-- 结果列表 -->
 			<scroll-view class="results-scroll" scroll-y v-else>
 				<view class="results">
-					<!-- 精确匹配 -->
-					<view class="result-section" v-if="exactMatches.length > 0">
-						<view class="section-header">
-							<view class="section-title-wrapper">
-								<view class="section-icon exact">
-									<uni-icons type="location-filled" size="16" color="#fff"></uni-icons>
+					<!-- 动态排序的分区列表 -->
+					<template v-for="section in sortedSections" :key="section.type">
+						<!-- 有结果的分区 -->
+						<view class="result-section" v-if="section.hasResults">
+							<view class="section-header">
+								<view class="section-title-wrapper">
+									<view class="section-icon" :class="section.iconClass">
+										<uni-icons :type="section.iconType" size="16" color="#fff"></uni-icons>
+									</view>
+									<text class="section-title">{{ section.title }}</text>
 								</view>
-								<text class="section-title">精确匹配</text>
+								<text class="section-count">{{ section.matches.length }}个</text>
 							</view>
-							<text class="section-count">{{ exactMatches.length }}个</text>
-						</view>
 
-						<view class="combo-list">
-							<view v-for="item in exactMatches" :key="item.combo.id" class="combo-item">
-								<view class="combo-main" @click="goToPurchase(item.combo)">
-									<view class="combo-info">
-										<text class="combo-name">{{ item.combo.name }}</text>
-										<text class="combo-foods">{{ getComboFoodsSummary(item.combo.id) }}</text>
-									</view>
-									<view class="combo-price">
-										<text class="price-value">¥{{ item.combo.price }}</text>
-										<text class="price-saved"
-											v-if="item.savedAmount > 0">省¥{{ item.savedAmount.toFixed(1) }}</text>
-									</view>
-								</view>
-								<view class="combo-footer">
-									<view class="score-badge">
-										<text>综合 {{ item.comprehensiveScore.toFixed(0) }}</text>
-									</view>
-									<view class="efficiency-badge" :class="getEfficiencyClass(item.costEfficiency)">
-										<text>{{ item.costEfficiency.toFixed(2) }}x</text>
-									</view>
-									<view class="match-badge" v-if="item.matchRatio < 1">
-										<text>{{ (item.matchRatio * 100).toFixed(0) }}%</text>
-									</view>
-									<view class="combo-go" @click.stop="goToPurchase(item.combo)">
-										<text>去购买</text>
-										<uni-icons type="arrow-right" size="14" color="#ff6b35"></uni-icons>
-									</view>
-								</view>
-							</view>
-						</view>
-					</view>
-
-					<!-- 高性价比推荐 -->
-					<view class="result-section" v-if="highValueMatches.length > 0">
-						<view class="section-header">
-							<view class="section-title-wrapper">
-								<view class="section-icon high-value">
-									<uni-icons type="star-filled" size="16" color="#fff"></uni-icons>
-								</view>
-								<text class="section-title">高性价比推荐</text>
-							</view>
-							<text class="section-count">{{ highValueMatches.length }}个</text>
-						</view>
-
-						<view class="combo-list">
-							<view v-for="item in highValueMatches" :key="item.combo.id" class="combo-item">
-								<view class="combo-main" @click="goToPurchase(item.combo)">
-									<view class="combo-info">
-										<text class="combo-name">{{ item.combo.name }}</text>
-										<text class="combo-foods">{{ getComboFoodsSummary(item.combo.id) }}</text>
-									</view>
-									<view class="combo-price">
-										<text class="price-value">¥{{ item.combo.price }}</text>
-									</view>
-								</view>
-								<view class="combo-footer">
-									<view class="score-badge">
-										<text>综合 {{ item.comprehensiveScore.toFixed(0) }}</text>
-									</view>
-									<view class="efficiency-badge" :class="getEfficiencyClass(item.costEfficiency)">
-										<text>{{ item.costEfficiency.toFixed(2) }}x</text>
-									</view>
-									<view class="match-badge">
-										<text>{{ (item.matchRatio * 100).toFixed(0) }}%</text>
-									</view>
-									<view class="combo-go" @click.stop="showComboDetail(item)">
-										<text>去看看</text>
-										<uni-icons type="arrow-right" size="14" color="#ff6b35"></uni-icons>
-									</view>
-								</view>
-							</view>
-						</view>
-					</view>
-
-					<!-- 部分匹配 -->
-					<view class="result-section" v-if="partialMatches.length > 0">
-						<view class="section-header">
-							<view class="section-title-wrapper">
-								<view class="section-icon partial">
-									<uni-icons type="list" size="16" color="#fff"></uni-icons>
-								</view>
-								<text class="section-title">部分匹配</text>
-							</view>
-							<text class="section-count">{{ partialMatches.length }}个</text>
-						</view>
-
-						<view class="combo-list">
-							<view v-for="item in partialMatches" :key="item.combo.id" class="combo-item">
-								<view class="combo-main" @click="goToPurchase(item.combo)">
-									<view class="combo-info">
-										<text class="combo-name">{{ item.combo.name }}</text>
-										<text class="combo-foods">{{ getComboFoodsSummary(item.combo.id) }}</text>
-									</view>
-									<view class="combo-price">
-										<text class="price-value">¥{{ item.combo.price }}</text>
-									</view>
-								</view>
-								<view class="combo-footer">
-									<view class="score-badge">
-										<text>综合 {{ item.comprehensiveScore.toFixed(0) }}</text>
-									</view>
-									<view class="efficiency-badge" :class="getEfficiencyClass(item.costEfficiency)">
-										<text>{{ item.costEfficiency.toFixed(2) }}x</text>
-									</view>
-									<view class="match-badge">
-										<text>{{ (item.matchRatio * 100).toFixed(0) }}%</text>
-									</view>
-									<view class="combo-go" @click.stop="showComboDetail(item)">
-										<text>去看看</text>
-										<uni-icons type="arrow-right" size="14" color="#ff6b35"></uni-icons>
-									</view>
-								</view>
-							</view>
-						</view>
-					</view>
-
-					<!-- 多套餐组合 -->
-					<view class="result-section" v-if="multiComboMatches.length > 0">
-						<view class="section-header">
-							<view class="section-title-wrapper">
-								<view class="section-icon multi-combo">
-									<uni-icons type="plus" size="16" color="#fff"></uni-icons>
-								</view>
-								<text class="section-title">多套餐组合</text>
-							</view>
-							<text class="section-count">{{ multiComboMatches.length }}个</text>
-						</view>
-
-						<view class="combo-list">
-							<view v-for="item in multiComboMatches" :key="item.combo.id" class="combo-item">
-								<view class="combo-main" @click="goToPurchase(item.combo)">
-									<view class="combo-info">
-										<text class="combo-name">{{ item.combo.name }}</text>
-										<text class="combo-foods">{{ getComboFoodsSummary(item.combo.id) }}</text>
-									</view>
-									<view class="combo-price">
-										<text class="price-value">¥{{ item.combo.price }}</text>
-									</view>
-								</view>
-								<view class="combo-footer">
-									<view class="score-badge">
-										<text>综合 {{ item.comprehensiveScore.toFixed(0) }}</text>
-									</view>
-									<view class="efficiency-badge" :class="getEfficiencyClass(item.costEfficiency)">
-										<text>{{ item.costEfficiency.toFixed(2) }}x</text>
-									</view>
-									<view class="match-badge">
-										<text>{{ (item.matchRatio * 100).toFixed(0) }}%</text>
-									</view>
-									<view class="combo-go" @click.stop="showComboDetail(item)">
-										<text>去看看</text>
-										<uni-icons type="arrow-right" size="14" color="#ff6b35"></uni-icons>
-									</view>
-								</view>
-							</view>
-						</view>
-					</view>
-
-					<!-- 置换推荐 -->
-					<view class="result-section" v-if="substitutionMatches.length > 0">
-						<view class="section-header">
-							<view class="section-title-wrapper">
-								<view class="section-icon substitution">
-									<uni-icons type="refresh" size="16" color="#fff"></uni-icons>
-								</view>
-								<text class="section-title">同类置换</text>
-							</view>
-							<text class="section-count">{{ substitutionMatches.length }}个</text>
-						</view>
-
-						<view class="combo-list">
-							<view v-for="item in substitutionMatches" :key="item.combo.id" class="combo-item">
-								<view class="combo-main" @click="goToPurchase(item.combo)">
-									<view class="combo-info">
-										<text class="combo-name">{{ item.combo.name }}</text>
-										<text class="combo-foods">{{ getComboFoodsSummary(item.combo.id) }}</text>
-										<view class="substitution-hint" v-if="item.substitutionInfo">
-											<text class="substitution-text">{{ item.substitutionInfo.original }} → {{ item.substitutionInfo.substituted }}</text>
+							<view class="combo-list">
+								<view v-for="item in section.matches" :key="item.combo.id" class="combo-item">
+									<view class="combo-main" @click="goToPurchase(item.combo)">
+										<view class="combo-info">
+											<text class="combo-name">{{ item.combo.name }}</text>
+											<text class="combo-foods">{{ getComboFoodsSummary(item.combo.id) }}</text>
+											<view class="substitution-hint" v-if="item.substitutionInfo">
+												<text class="substitution-text">{{ item.substitutionInfo.original }} → {{ item.substitutionInfo.substituted }}</text>
+											</view>
+										</view>
+										<view class="combo-price">
+											<text class="price-value">¥{{ item.combo.price }}</text>
+											<text class="price-saved" v-if="item.savedAmount > 0">省¥{{ item.savedAmount.toFixed(1) }}</text>
 										</view>
 									</view>
-									<view class="combo-price">
-										<text class="price-value">¥{{ item.combo.price }}</text>
-									</view>
-								</view>
-								<view class="combo-footer">
-									<view class="score-badge">
-										<text>综合 {{ item.comprehensiveScore.toFixed(0) }}</text>
-									</view>
-									<view class="efficiency-badge" :class="getEfficiencyClass(item.costEfficiency)">
-										<text>{{ item.costEfficiency.toFixed(2) }}x</text>
-									</view>
-									<view class="match-badge">
-										<text>{{ (item.matchRatio * 100).toFixed(0) }}%</text>
-									</view>
-									<view class="combo-go" @click.stop="showComboDetail(item)">
-										<text>去看看</text>
-										<uni-icons type="arrow-right" size="14" color="#ff6b35"></uni-icons>
+									<view class="combo-footer">
+										<view class="score-badge">
+											<text>综合 {{ item.comprehensiveScore.toFixed(0) }}</text>
+										</view>
+										<view class="efficiency-badge" :class="getEfficiencyClass(item.costEfficiency)">
+											<text>{{ item.costEfficiency.toFixed(2) }}x</text>
+										</view>
+										<view class="match-badge" v-if="item.matchRatio < 1">
+											<text>{{ (item.matchRatio * 100).toFixed(0) }}%</text>
+										</view>
+										<view class="combo-go" @click.stop="section.type === 'exact' ? goToPurchase(item.combo) : showComboDetail(item)">
+											<text>{{ section.type === 'exact' ? '去购买' : '去看看' }}</text>
+											<uni-icons type="arrow-right" size="14" color="#ff6b35"></uni-icons>
+										</view>
 									</view>
 								</view>
 							</view>
 						</view>
-					</view>
+
+						<!-- 无结果的分区 -->
+						<view class="result-section empty-section" v-else>
+							<view class="section-header">
+								<view class="section-title-wrapper">
+									<view class="section-icon" :class="section.iconClass">
+										<uni-icons :type="section.iconType" size="16" color="#fff"></uni-icons>
+									</view>
+									<text class="section-title">{{ section.title }}</text>
+								</view>
+								<text class="section-count empty-hint">暂无方案</text>
+							</view>
+						</view>
+					</template>
 
 					<!-- 无结果 -->
 					<view class="no-results"
-						v-if="exactMatches.length === 0 && highValueMatches.length === 0 && partialMatches.length === 0 && multiComboMatches.length === 0 && substitutionMatches.length === 0">
+						v-if="!sortedSections.some(s => s.hasResults)">
 						<view class="no-results-icon">🔍</view>
 						<text class="no-results-text">没有找到匹配的套餐</text>
 						<text class="no-results-hint">请尝试选择其他菜品组合</text>
@@ -308,6 +155,7 @@
 <script setup>
 	import {
 		ref,
+		computed,
 		onMounted
 	} from 'vue'
 	import {
@@ -381,6 +229,47 @@
 			loading.value = false
 		}
 	}
+
+	// 动态排序的分区列表（按各组第一名综合得分排序，无结果放最后）
+	const sortedSections = computed(() => {
+		const sectionConfigs = [
+			{ type: 'exact', title: '精确匹配', iconType: 'location-filled', iconClass: 'exact' },
+			{ type: 'highValue', title: '高性价比推荐', iconType: 'star-filled', iconClass: 'high-value' },
+			{ type: 'partial', title: '部分匹配', iconType: 'list', iconClass: 'partial' },
+			{ type: 'multi_combo', title: '多套餐组合', iconType: 'plus', iconClass: 'multi-combo' },
+			{ type: 'substitution', title: '同类置换', iconType: 'refresh', iconClass: 'substitution' }
+		]
+
+		const sectionMap = {
+			exact: exactMatches,
+			highValue: highValueMatches,
+			partial: partialMatches,
+			multi_combo: multiComboMatches,
+			substitution: substitutionMatches
+		}
+
+		// 构建分区数据
+		const sections = sectionConfigs.map(config => {
+			const matches = sectionMap[config.type]?.value || []
+			const maxScore = matches.length > 0 ? Math.max(...matches.map(m => m.comprehensiveScore)) : -1
+			return {
+				...config,
+				matches,
+				hasResults: matches.length > 0,
+				maxScore
+			}
+		})
+
+		// 按 maxScore 降序排序，-1（无结果）排到最后
+		sections.sort((a, b) => {
+			if (!a.hasResults && !b.hasResults) return 0
+			if (!a.hasResults) return 1
+			if (!b.hasResults) return -1
+			return b.maxScore - a.maxScore
+		})
+
+		return sections
+	})
 
 	// 获取性价比样式类
 	const getEfficiencyClass = (efficiency) => {
@@ -639,6 +528,15 @@
 	.result-section:nth-child(1) { animation-delay: 0.08s; }
 	.result-section:nth-child(2) { animation-delay: 0.16s; }
 	.result-section:nth-child(3) { animation-delay: 0.24s; }
+
+	.empty-section {
+		opacity: 0.5;
+	}
+
+	.empty-hint {
+		color: var(--color-text-tertiary);
+		font-size: var(--font-size-sm);
+	}
 
 	.section-header {
 		display: flex;
