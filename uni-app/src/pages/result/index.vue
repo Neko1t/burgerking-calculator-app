@@ -218,11 +218,11 @@
 				}
 			})
 
-			exactMatches.value = recommendations.filter(item => item.type === 'exact')
-			highValueMatches.value = recommendations.filter(item => item.type === 'partial' && item.costEfficiency > 1)
-			partialMatches.value = recommendations.filter(item => item.type === 'partial' && item.costEfficiency <= 1)
-			multiComboMatches.value = recommendations.filter(item => item.type === 'multi_combo')
-			substitutionMatches.value = recommendations.filter(item => item.type === 'substitution')
+			exactMatches.value = recommendations.exact || []
+			highValueMatches.value = recommendations.mostEfficient || []
+			partialMatches.value = recommendations.matchFirst || []
+			multiComboMatches.value = []
+			substitutionMatches.value = recommendations.bestUpgrade || []
 		} catch (error) {
 			console.error('计算推荐时出错:', error)
 		} finally {
@@ -234,10 +234,10 @@
 	const sortedSections = computed(() => {
 		const sectionConfigs = [
 			{ type: 'exact', title: '精确匹配', iconType: 'location-filled', iconClass: 'exact' },
-			{ type: 'highValue', title: '高性价比推荐', iconType: 'star-filled', iconClass: 'high-value' },
-			{ type: 'partial', title: '部分匹配', iconType: 'list', iconClass: 'partial' },
+			{ type: 'highValue', title: '最性价比', iconType: 'star-filled', iconClass: 'high-value' },
+			{ type: 'partial', title: '匹配度优先', iconType: 'list', iconClass: 'partial' },
 			{ type: 'multi_combo', title: '多套餐组合', iconType: 'plus', iconClass: 'multi-combo' },
-			{ type: 'substitution', title: '同类置换', iconType: 'refresh', iconClass: 'substitution' }
+			{ type: 'substitution', title: '高获得', iconType: 'refresh', iconClass: 'substitution' }
 		]
 
 		const sectionMap = {
