@@ -599,7 +599,7 @@
 	.container {
 		min-height: 100vh;
 		background: linear-gradient(180deg, #fff 0%, var(--color-bg) 100%);
-		padding-bottom: calc(160rpx + env(safe-area-inset-bottom));
+		padding-bottom: calc(120rpx + env(safe-area-inset-bottom));
 		font-family: var(--font-family);
 	}
 
@@ -927,7 +927,6 @@
 		padding-bottom: calc(16rpx + env(safe-area-inset-bottom));
 		background-color: transparent;
 		z-index: 999;
-		margin-bottom: 100rpx;
 	}
 
 	.bottom-float-bar-inner {

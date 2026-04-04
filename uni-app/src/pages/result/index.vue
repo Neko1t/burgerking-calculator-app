@@ -529,7 +529,7 @@
 
 	.results {
 		padding: 24rpx 32rpx;
-		padding-bottom: 140rpx;
+		padding-bottom: 120rpx;
 	}
 
 	.result-section {
@@ -777,7 +777,6 @@
 		padding-bottom: calc(16rpx + env(safe-area-inset-bottom));
 		background-color: transparent;
 		z-index: 999;
-		margin-bottom: 100rpx;
 	}
 
 	.bottom-float-bar-inner {
