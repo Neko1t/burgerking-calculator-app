@@ -574,6 +574,8 @@
 		display: flex;
 		align-items: center;
 		gap: 14rpx;
+		flex-wrap: nowrap;
+		white-space: nowrap;
 	}
 
 	.clear-btn {
@@ -596,6 +598,7 @@
 		font-size: var(--font-size-md);
 		color: var(--color-text-secondary);
 		font-weight: 500;
+		white-space: nowrap;
 	}
 
 	.calculate-btn {
@@ -619,6 +622,7 @@
 		font-size: var(--font-size-md);
 		color: #fff;
 		font-weight: 600;
+		white-space: nowrap;
 	}
 
 	.cart-btn {
@@ -642,6 +646,7 @@
 		font-size: var(--font-size-md);
 		color: var(--color-primary);
 		font-weight: 600;
+		white-space: nowrap;
 	}
 
 	.cart-modal-overlay {
