@@ -139,6 +139,45 @@
 						</view>
 					</view>
 
+					<!-- 多套餐组合 -->
+					<view class="result-section" v-if="multiComboMatches.length > 0">
+						<view class="section-header">
+							<view class="section-title-wrapper">
+								<view class="section-icon multi-combo">
+									<uni-icons type="plus" size="16" color="#fff"></uni-icons>
+								</view>
+								<text class="section-title">多套餐组合</text>
+							</view>
+							<text class="section-count">{{ multiComboMatches.length }}个</text>
+						</view>
+
+						<view class="combo-list">
+							<view v-for="item in multiComboMatches" :key="item.combo.id" class="combo-item">
+								<view class="combo-main" @click="goToPurchase(item.combo)">
+									<view class="combo-info">
+										<text class="combo-name">{{ item.combo.name }}</text>
+										<text class="combo-foods">{{ getComboFoodsSummary(item.combo.id) }}</text>
+									</view>
+									<view class="combo-price">
+										<text class="price-value">¥{{ item.combo.price }}</text>
+									</view>
+								</view>
+								<view class="combo-footer">
+									<view class="efficiency-badge" :class="getEfficiencyClass(item.costEfficiency)">
+										<text>性价比 {{ item.costEfficiency.toFixed(2) }}x</text>
+									</view>
+									<view class="match-badge">
+										<text>匹配度 {{ (item.matchRatio * 100).toFixed(0) }}%</text>
+									</view>
+									<view class="combo-go" @click.stop="showComboDetail(item)">
+										<text>去看看</text>
+										<uni-icons type="arrow-right" size="14" color="#ff6b35"></uni-icons>
+									</view>
+								</view>
+							</view>
+						</view>
+					</view>
+
 					<!-- 置换推荐 -->
 					<view class="result-section" v-if="substitutionMatches.length > 0">
 						<view class="section-header">
@@ -617,6 +656,10 @@
 
 	.section-icon.substitution {
 		background: linear-gradient(135deg, #8e44ad 0%, #9b59b6 100%);
+	}
+
+	.section-icon.multi-combo {
+		background: linear-gradient(135deg, #00b894 0%, #00cec9 100%);
 	}
 
 	.section-title {
