@@ -38,13 +38,28 @@
 							</view>
 
 							<view class="combo-list">
-								<view v-for="item in section.matches" :key="item.combo.id" class="combo-item">
+								<view v-for="item in section.matches" :key="item.combo.id + '_' + item.type" class="combo-item">
 									<view class="combo-main" @click="goToPurchase(item.combo)">
 										<view class="combo-info">
 											<text class="combo-name">{{ item.combo.name }}</text>
 											<text class="combo-foods">{{ getComboFoodsSummary(item.combo.id) }}</text>
+											<!-- 置换提示 -->
 											<view class="substitution-hint" v-if="item.substitutionInfo">
-												<text class="substitution-text">{{ item.substitutionInfo.original }} → {{ item.substitutionInfo.substituted }}</text>
+												<text class="substitution-text">{{ item.substitutionInfo[0].original }} → {{ item.substitutionInfo[0].substituted }}</text>
+											</view>
+											<!-- 可选套餐补全提示 -->
+											<view class="supplement-hint" v-if="item.supplement">
+												<text class="supplement-text">{{ item.supplement.description }}</text>
+											</view>
+											<!-- 可选套餐拆分提示 -->
+											<view class="split-hint" v-if="item.split">
+												<text class="split-text">{{ item.split.description }}</text>
+											</view>
+											<!-- 可选套餐组信息 -->
+											<view class="choice-groups" v-if="item.choiceInfo && item.choiceInfo.groupResults">
+												<text class="choice-text" v-for="group in item.choiceInfo.groupResults" :key="group.groupId">
+													{{ group.groupName }}:{{ group.matched }}/{{ group.required }}
+												</text>
 											</view>
 										</view>
 										<view class="combo-price">
@@ -738,6 +753,41 @@
 		font-size: var(--font-size-xs);
 		color: #8e44ad;
 		font-weight: 500;
+	}
+
+	.supplement-hint {
+		margin-top: 8rpx;
+	}
+
+	.supplement-text {
+		font-size: var(--font-size-xs);
+		color: #27ae60;
+		font-weight: 500;
+	}
+
+	.split-hint {
+		margin-top: 8rpx;
+	}
+
+	.split-text {
+		font-size: var(--font-size-xs);
+		color: #e67e22;
+		font-weight: 500;
+	}
+
+	.choice-groups {
+		margin-top: 8rpx;
+		display: flex;
+		flex-wrap: wrap;
+		gap: 8rpx;
+	}
+
+	.choice-text {
+		font-size: var(--font-size-xs);
+		color: #3498db;
+		background: #ebf5fb;
+		padding: 4rpx 12rpx;
+		border-radius: 12rpx;
 	}
 
 	.combo-go {
