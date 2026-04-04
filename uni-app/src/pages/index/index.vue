@@ -531,7 +531,7 @@
 		position: fixed;
 		left: 0;
 		right: 0;
-		bottom: 0;
+		bottom: 100rpx;
 		padding: 16rpx 28rpx;
 		padding-bottom: calc(16rpx + env(safe-area-inset-bottom));
 		background-color: transparent;
