@@ -49,8 +49,14 @@
 									</view>
 								</view>
 								<view class="combo-footer">
+									<view class="score-badge">
+										<text>综合 {{ item.comprehensiveScore.toFixed(0) }}</text>
+									</view>
 									<view class="efficiency-badge" :class="getEfficiencyClass(item.costEfficiency)">
-										<text>性价比 {{ item.costEfficiency.toFixed(2) }}x</text>
+										<text>{{ item.costEfficiency.toFixed(2) }}x</text>
+									</view>
+									<view class="match-badge" v-if="item.matchRatio < 1">
+										<text>{{ (item.matchRatio * 100).toFixed(0) }}%</text>
 									</view>
 									<view class="combo-go" @click.stop="goToPurchase(item.combo)">
 										<text>去购买</text>
@@ -85,11 +91,14 @@
 									</view>
 								</view>
 								<view class="combo-footer">
+									<view class="score-badge">
+										<text>综合 {{ item.comprehensiveScore.toFixed(0) }}</text>
+									</view>
 									<view class="efficiency-badge" :class="getEfficiencyClass(item.costEfficiency)">
-										<text>性价比 {{ item.costEfficiency.toFixed(2) }}x</text>
+										<text>{{ item.costEfficiency.toFixed(2) }}x</text>
 									</view>
 									<view class="match-badge">
-										<text>匹配度 {{ (item.matchRatio * 100).toFixed(0) }}%</text>
+										<text>{{ (item.matchRatio * 100).toFixed(0) }}%</text>
 									</view>
 									<view class="combo-go" @click.stop="showComboDetail(item)">
 										<text>去看看</text>
@@ -124,11 +133,14 @@
 									</view>
 								</view>
 								<view class="combo-footer">
+									<view class="score-badge">
+										<text>综合 {{ item.comprehensiveScore.toFixed(0) }}</text>
+									</view>
 									<view class="efficiency-badge" :class="getEfficiencyClass(item.costEfficiency)">
-										<text>性价比 {{ item.costEfficiency.toFixed(2) }}x</text>
+										<text>{{ item.costEfficiency.toFixed(2) }}x</text>
 									</view>
 									<view class="match-badge">
-										<text>匹配度 {{ (item.matchRatio * 100).toFixed(0) }}%</text>
+										<text>{{ (item.matchRatio * 100).toFixed(0) }}%</text>
 									</view>
 									<view class="combo-go" @click.stop="showComboDetail(item)">
 										<text>去看看</text>
@@ -163,11 +175,14 @@
 									</view>
 								</view>
 								<view class="combo-footer">
+									<view class="score-badge">
+										<text>综合 {{ item.comprehensiveScore.toFixed(0) }}</text>
+									</view>
 									<view class="efficiency-badge" :class="getEfficiencyClass(item.costEfficiency)">
-										<text>性价比 {{ item.costEfficiency.toFixed(2) }}x</text>
+										<text>{{ item.costEfficiency.toFixed(2) }}x</text>
 									</view>
 									<view class="match-badge">
-										<text>匹配度 {{ (item.matchRatio * 100).toFixed(0) }}%</text>
+										<text>{{ (item.matchRatio * 100).toFixed(0) }}%</text>
 									</view>
 									<view class="combo-go" @click.stop="showComboDetail(item)">
 										<text>去看看</text>
@@ -205,8 +220,14 @@
 									</view>
 								</view>
 								<view class="combo-footer">
+									<view class="score-badge">
+										<text>综合 {{ item.comprehensiveScore.toFixed(0) }}</text>
+									</view>
 									<view class="efficiency-badge" :class="getEfficiencyClass(item.costEfficiency)">
-										<text>性价比 {{ item.costEfficiency.toFixed(2) }}x</text>
+										<text>{{ item.costEfficiency.toFixed(2) }}x</text>
+									</view>
+									<view class="match-badge">
+										<text>{{ (item.matchRatio * 100).toFixed(0) }}%</text>
 									</view>
 									<view class="combo-go" @click.stop="showComboDetail(item)">
 										<text>去看看</text>
@@ -326,11 +347,7 @@
 			// 确保数据已加载
 			await dataStore.init()
 
-			console.log('[结果页] selectedFoodNames:', selectedFoodNames.value)
-			console.log('[结果页] allFoods数量:', dataStore.allFoods.length)
-
 			const selectedFoods = dataStore.allFoods.filter(food => selectedFoodNames.value.includes(food.id))
-			console.log('[结果页] 匹配到的食物数量:', selectedFoods.length)
 
 			if (selectedFoods.length === 0) {
 				loading.value = false
@@ -338,8 +355,6 @@
 			}
 
 			const recommendations = recommendCombos(selectedFoodNames.value)
-			console.log('[结果页] 推荐结果数量:', recommendations.length)
-			console.log('[结果页] 推荐结果类型:', recommendations.map(r => r.type))
 
 			recommendations.forEach(rec => {
 				rec.savedAmount = calculateSavedAmount(rec, dataStore)
@@ -360,11 +375,6 @@
 			partialMatches.value = recommendations.filter(item => item.type === 'partial' && item.costEfficiency <= 1)
 			multiComboMatches.value = recommendations.filter(item => item.type === 'multi_combo')
 			substitutionMatches.value = recommendations.filter(item => item.type === 'substitution')
-
-			console.log('[结果页] exactMatches:', exactMatches.value.length)
-			console.log('[结果页] multiComboMatches:', multiComboMatches.value.length)
-			console.log('[结果页] substitutionMatches:', substitutionMatches.value.length)
-			console.log('[结果页] partialMatches:', partialMatches.value.length)
 		} catch (error) {
 			console.error('计算推荐时出错:', error)
 		} finally {
@@ -802,6 +812,15 @@
 	.efficiency-badge.poor {
 		background: linear-gradient(135deg, #ffebee 0%, #ffcdd2 100%);
 		color: #c62828;
+	}
+
+	.score-badge {
+		padding: 8rpx 18rpx;
+		border-radius: 20rpx;
+		background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%);
+		font-size: var(--font-size-xs);
+		color: #fff;
+		font-weight: 600;
 	}
 
 	.match-badge {
