@@ -139,6 +139,45 @@
 						</view>
 					</view>
 
+					<!-- 置换推荐 -->
+					<view class="result-section" v-if="substitutionMatches.length > 0">
+						<view class="section-header">
+							<view class="section-title-wrapper">
+								<view class="section-icon substitution">
+									<uni-icons type="refresh" size="16" color="#fff"></uni-icons>
+								</view>
+								<text class="section-title">同类置换</text>
+							</view>
+							<text class="section-count">{{ substitutionMatches.length }}个</text>
+						</view>
+
+						<view class="combo-list">
+							<view v-for="item in substitutionMatches" :key="item.combo.id" class="combo-item">
+								<view class="combo-main" @click="goToPurchase(item.combo)">
+									<view class="combo-info">
+										<text class="combo-name">{{ item.combo.name }}</text>
+										<text class="combo-foods">{{ getComboFoodsSummary(item.combo.id) }}</text>
+										<view class="substitution-hint" v-if="item.substitutionInfo">
+											<text class="substitution-text">{{ item.substitutionInfo.original }} → {{ item.substitutionInfo.substituted }}</text>
+										</view>
+									</view>
+									<view class="combo-price">
+										<text class="price-value">¥{{ item.combo.price }}</text>
+									</view>
+								</view>
+								<view class="combo-footer">
+									<view class="efficiency-badge" :class="getEfficiencyClass(item.costEfficiency)">
+										<text>性价比 {{ item.costEfficiency.toFixed(2) }}x</text>
+									</view>
+									<view class="combo-go" @click.stop="showComboDetail(item)">
+										<text>去看看</text>
+										<uni-icons type="arrow-right" size="14" color="#ff6b35"></uni-icons>
+									</view>
+								</view>
+							</view>
+						</view>
+					</view>
+
 					<!-- 无结果 -->
 					<view class="no-results"
 						v-if="exactMatches.length === 0 && highValueMatches.length === 0 && partialMatches.length === 0 && multiComboMatches.length === 0 && substitutionMatches.length === 0">
@@ -576,6 +615,10 @@
 		background: linear-gradient(135deg, #78909c 0%, #90a4ae 100%);
 	}
 
+	.section-icon.substitution {
+		background: linear-gradient(135deg, #8e44ad 0%, #9b59b6 100%);
+	}
+
 	.section-title {
 		font-size: var(--font-size-lg);
 		font-weight: 700;
@@ -713,6 +756,16 @@
 		background: linear-gradient(135deg, #f5f5f5 0%, #eeeeee 100%);
 		font-size: var(--font-size-xs);
 		color: var(--color-text-secondary);
+		font-weight: 500;
+	}
+
+	.substitution-hint {
+		margin-top: 8rpx;
+	}
+
+	.substitution-text {
+		font-size: var(--font-size-xs);
+		color: #8e44ad;
 		font-weight: 500;
 	}
 
