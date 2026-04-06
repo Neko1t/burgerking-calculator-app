@@ -39,3 +39,6 @@ unpackage/
 data/
 !uni-app/static/data/
 SESSION_CONTEXT.md
+
+# config (contains API keys)
+config.json
